@@ -121,7 +121,20 @@ Leaflet のインスタンスを残したまま `innerHTML` を書き換える�
 
 ---
 
-## Places API を扱うときの決まり（Phase 3 以降）
+## APIキーのリファラ制限は「ドメインまで」で書く（実機で確認済み）
+
+ブラウザの既定の Referrer-Policy（strict-origin-when-cross-origin）により、
+Google へ送られる Referer は **`https://takken-net.github.io/` のようにドメイン部分だけ**になる。
+そのため Google Cloud 側の「アプリケーションの制限」に
+`https://takken-net.github.io/meshi-finder/*` と書くと**一致せず全リクエストが403になる**。
+
+正しくは:
+```
+https://takken-net.github.io/*
+```
+実際にこの403を踏んで直した経緯があるので、パス付きに「直さない」こと。
+
+## Places API を扱うときの決まり
 
 **課金事故を防ぐための取り決めです。勝手に緩めないでください。**
 
