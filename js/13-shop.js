@@ -136,6 +136,7 @@ function shopDetailHTML(){
 
     <div class="row gap mt">
       <a class="btn pri" href="${esc(mapsUrl(s))}" target="_blank" rel="noopener">Googleマップで見る</a>
+      <a class="btn" href="${esc(tabelogUrl(s))}" target="_blank" rel="noopener">${s.tabelog ? '食べログ' : '食べログで検索'}</a>
       <a class="btn" href="${esc(routeUrl(s))}" target="_blank" rel="noopener">経路</a>
     </div>
 
@@ -200,6 +201,11 @@ function shopEditHTML(){
     <label class="lbl">リスト<span class="mini">（取り込み元。カンマ区切り）</span></label>
     <input id="e-lists" class="fld" type="text" value="${esc((e.lists||[]).join(', '))}">
 
+    <label class="lbl">食べログURL<span class="mini">（貼っておくと検索を挟まず店ページへ直行できます）</span></label>
+    <input id="e-tabelog" class="fld" type="url" value="${esc(e.tabelog||'')}"
+           placeholder="https://tabelog.com/tokyo/...">
+
+
     <label class="lbl">自分の評価</label>
     <div id="e-rate">${starPicker(e.myRate, 'setEditRate')}</div>
 
@@ -233,6 +239,7 @@ function syncEdit(){
   EDIT.name = g('e-name').trim();
   EDIT.tags  = g('e-tags').split(/[,、]/).map(t=>t.trim()).filter(Boolean);
   EDIT.lists = g('e-lists').split(/[,、]/).map(t=>t.trim()).filter(Boolean);
+  EDIT.tabelog = g('e-tabelog').trim();
   EDIT.memo = g('e-memo');
   EDIT.addr = g('e-addr').trim();
   const la = g('e-lat'), lo = g('e-lng');

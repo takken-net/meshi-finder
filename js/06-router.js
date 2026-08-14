@@ -83,5 +83,18 @@ const routeUrl = sh => sh.lat != null
   ? `https://www.google.com/maps/dir/?api=1&destination=${sh.lat},${sh.lng}`
   : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(sh.name)}`;
 
+/** 食べログのリンク。店ページのURLが登録してあれば直接、
+    無ければ 店名＋エリア（住所から抽出）で食べログ内を検索する */
+function tabelogUrl(sh){
+  if(sh.tabelog) return sh.tabelog;
+  /* Google の住所は「日本、〒160-0023 東京都新宿区西新宿…」の形で来る。
+     郵便番号などを外してから「〜市／区／町／村」までをエリア語として使う */
+  const addr = String(sh.addr || '').replace(/日本[、,]?/,'').replace(/〒[\d-]+\s*/,'');
+  const m = /(?:都|道|府|県)(.+?[市区町村])/.exec(addr) || /^(.+?[市区町村])/.exec(addr);
+  const area = m ? m[1] : '';
+  return `https://tabelog.com/rst/rstsearch/?sk=${encodeURIComponent(sh.name)}`
+       + (area ? `&sa=${encodeURIComponent(area)}` : '');
+}
+
 /** 位置情報が未取得の店の数 */
 const pendingCount = () => DB.shops.filter(s => s.lat == null).length;

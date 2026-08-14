@@ -40,6 +40,7 @@ function newShop(o){
     /* --- ユーザー資産（Places の再取得・CSV再取込で絶対に上書きしない） --- */
     genres: [], genresManual: false, tags: [], myRate: 0, memo: '', fav: false,
     lists: [],                 // 取り込み元のリスト名／アカウント（複数に属せる）
+    tabelog: '',               // 食べログの店ページURL（貼っておくと直接開ける）
     /* --- 管理 --- */
     srcUrl: '', srcId: '', src: 'manual',
     status: 'manual',          // ok | pending | ambiguous | failed | manual

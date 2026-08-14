@@ -243,6 +243,18 @@ ok('座標があれば座標で開く',         mapsUrl(withPos).includes('35.68
 ok('座標が無ければ店名で開く',       mapsUrl(noPos).includes(encodeURIComponent(noPos.name)));
 ok('routeUrl が経路案内を指す',      routeUrl(withPos).includes('/maps/dir/'));
 
+/* 食べログのリンク */
+const tb1 = newShop({ name:'麺屋こうじ', addr:'日本、〒160-0023 東京都新宿区西新宿1-1-1' });
+ok('食べログの検索を指す',        tabelogUrl(tb1).startsWith('https://tabelog.com/rst/rstsearch/'));
+ok('店名が検索語に入る',          tabelogUrl(tb1).includes(encodeURIComponent('麺屋こうじ')));
+ok('住所から区を抽出する',        tabelogUrl(tb1).includes(encodeURIComponent('新宿区')));
+ok('政令市も抽出できる',
+   tabelogUrl(newShop({ name:'X', addr:'北海道札幌市中央区1-1' })).includes(encodeURIComponent('札幌市')));
+ok('住所が無ければ店名だけで検索', !tabelogUrl(newShop({ name:'X' })).includes('&sa='));
+eq('店ページのURLが登録済みなら直行',
+   tabelogUrl(newShop({ name:'X', tabelog:'https://tabelog.com/tokyo/A1304/A130401/13000001/' })),
+   'https://tabelog.com/tokyo/A1304/A130401/13000001/');
+
 /* ============================================================
    10. ジャンルの自動判定
    ============================================================ */
