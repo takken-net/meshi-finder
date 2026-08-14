@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>食べ探 テスト</title>
+<!-- 地図の組み立てを本物どおりに検証するため Leaflet の CSS だけ読み込みます。
+     アプリ本体の style.css は、このページの見た目を壊すので読み込みません -->
+<link rel="stylesheet" href="../vendor/leaflet/leaflet.css">
+<style>
+  body{ font:14px/1.7 -apple-system,'Noto Sans JP','Yu Gothic UI',monospace; margin:0; padding:16px;
+        background:#14120f; color:#e8e3db; }
+  h1{ font-size:16px; margin:0 0 4px; }
+  #sum{ position:sticky; top:0; padding:10px 14px; margin:12px 0; border-radius:10px;
+        font-size:15px; font-weight:700; background:#2a2621; }
+  #sum.ok{ background:#1c4531; color:#8fe0b4; }
+  #sum.ng{ background:#4a1f1b; color:#ffb3a8; }
+  .sec{ margin:18px 0 4px; color:#f0c26b; font-weight:700; }
+  .ok{ color:#7dd6a4; }
+  .ng{ color:#ff9d90; }
+  .why{ color:#a49a8e; padding-left:22px; font-size:12px; }
+  /* 画面外に置くが、地図が正しく組み立てられるよう実寸は与える */
+  #stage{ position:absolute; left:-9999px; top:0; width:390px; height:800px; }
+  #view{ width:390px; height:600px; }
+  #map{ width:390px; height:400px; }   /* style.css を読まないぶんここで実寸を与える */
+</style>
+</head>
+<body>
+
+<h1>食べ探 テスト</h1>
+<p style="color:#a49a8e;margin:0">このページを開くだけでロジックの検証が走ります。Node.js は不要です。</p>
+<div id="sum">実行中…</div>
+<div id="out"></div>
+
+<!-- アプリの render() を本物のDOMに対して動かすための置き場 -->
+<div id="stage">
+  <header id="hdr"><span id="hdr-info"></span></header>
+  <main id="view"></main>
+  <nav id="nav"></nav>
+</div>
+
+<script>
+/* 本番データを壊さないよう、localStorage をこのページ限りのメモリ実装に差し替えます。
+   差し替えられなかった場合でも、アプリ側の load()/save() が例外を拾って
+   メモリ動作に落ちるため、実データは書き換わりません。 */
+window.__mem = {};
+(function(){
+  const mem = window.__mem;
+  const fake = {
+    getItem: k => (k in mem ? mem[k] : null),
+    setItem: (k, v) => { mem[k] = String(v); },
+    removeItem: k => { delete mem[k]; },
+    clear: () => { for (const k in mem) delete mem[k]; },
+  };
+  try{
+    Object.defineProperty(window, 'localStorage', { value: fake, configurable: true });
+    window.__lsFake = true;
+  }catch(e){ window.__lsFake = false; }
+})();
+
+/* 位置情報は常に「拒否」を返すようにして、テストの結果を毎回同じにします */
+try{
+  Object.defineProperty(navigator, 'geolocation', {
+    value: { getCurrentPosition: (ok, ng) => ng({ code: 1, message: 'test' }) },
+    configurable: true,
+  });
+}catch(e){}
+</script>
+
+<script src="../vendor/leaflet/leaflet.js"></script>
+
+<!-- index.html と同じ順番。ただし 20-boot.js（起動）だけは読み込みません -->
+<script src="../js/01-utils.js"></script>
+<script src="../js/02-genres.js"></script>
+<script src="../js/03-storage.js"></script>
+<script src="../js/05-search.js"></script>
+<script src="../js/06-router.js"></script>
+<script src="../js/07-places.js"></script>
+<script src="../js/10-find.js"></script>
+<script src="../js/11-result.js"></script>
+<script src="../js/12-map.js"></script>
+<script src="../js/13-shop.js"></script>
+<script src="../js/14-import.js"></script>
+<script src="../js/15-settings.js"></script>
+<script src="../js/16-share.js"></script>
+
+<script src="./tests.js"></script>
+</body>
+</html>
