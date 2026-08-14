@@ -150,6 +150,8 @@ function searchShops(q, pos, at){
 
   if(q.list) list = list.filter(s => (s.lists||[]).includes(q.list));
 
+  if(q.rate) list = list.filter(s => num(s.myRate) >= num(q.rate));   // My評価（★の数）で絞る
+
   if(q.kw) list = list.filter(s => kwMatch(s, q.kw));
 
   if(q.openOnly) list = list.filter(s => {

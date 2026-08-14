@@ -37,6 +37,7 @@ function condHTML(){
   if(Q.list)          p.push(esc(Q.list));
   if(Q.kw)            p.push(`「${esc(Q.kw)}」`);
   if(Q.openOnly)      p.push('今やってる店');
+  if(Q.rate)          p.push(`★${num(Q.rate)}以上`);
   if(Q.radius && POS) p.push((RADIUS_OPTS.find(([v]) => v === num(Q.radius))||[,''])[1]);
   return p.map(x => `<span class="tag alt">${x}</span>`).join('');
 }
@@ -55,7 +56,7 @@ function shopCardHTML(r){
   <div class="card" onclick="openFromResult('${s.id}')">
     <div class="row between">
       <b>${s.fav?'📌 ':''}${esc(s.name)}</b>
-      <span class="dist">${fmtDist(r.dist)}</span>
+      <span class="dist">${distLabel(r.dist)}</span>
     </div>
     <div class="tags">
       ${openBadge(s)}
@@ -92,7 +93,7 @@ function pickHTML(){
       <div class="tags">
         ${openBadge(s)}
         ${genreTags(s.genres)}
-        ${PICK.dist != null ? `<span class="tag alt">${fmtDist(PICK.dist)}</span>` : ''}
+        ${PICK.dist != null ? `<span class="tag alt">${distLabel(PICK.dist)}</span>` : ''}
       </div>
       ${s.memo ? `<p class="mini">${esc(s.memo)}</p>` : ''}
     </div>

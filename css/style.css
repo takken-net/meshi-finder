@@ -121,10 +121,15 @@ select.fld{ appearance:none; padding-right:28px;
 }
 .chip.on{ background:var(--acc); border-color:var(--acc); color:#fff; font-weight:700; }
 
-/* ---------- ★ ---------- */
-.stars{ color:#e8a33d; letter-spacing:1px; white-space:nowrap; }
+/* ---------- ★ ----------
+   ★は必ず横一列に並べる（スマホで縦に折り返した実例があるため、
+   inline-flex と nowrap で明示的に固定している） */
+.stars{
+  color:#e8a33d; letter-spacing:1px; white-space:nowrap;
+  display:inline-flex; align-items:center; flex-wrap:nowrap; line-height:1;
+}
 .stars .off,.stars.off{ color:var(--line); }
-.stars.pick b{ font-size:26px; cursor:pointer; padding:0 1px; }
+.stars.pick b{ font-size:26px; cursor:pointer; padding:0 1px; font-weight:400; }
 .stars.pick b.off{ color:var(--line); }
 
 /* ---------- 定義リスト ---------- */
@@ -206,6 +211,13 @@ ol.steps li{ margin:4px 0; }
 
 .tag.new{ background:var(--acc); color:#fff; }
 .tag.list{ background:none; border:1px solid var(--line); color:var(--sub); }
+/* 外部リンク（Googleマップ・食べログ・経路）のタグ。タップしやすい高さを確保 */
+.tag.lnk{
+  background:var(--card); border:1px solid var(--acc); color:var(--acc);
+  min-height:40px; padding:6px 16px; font-size:13px; font-weight:700;
+  display:inline-flex; align-items:center; text-decoration:none;
+}
+.tag.lnk:active{ background:var(--acc-w); }
 .card.off{ opacity:.45; }
 .card .sw{ min-height:0; gap:8px; }
 

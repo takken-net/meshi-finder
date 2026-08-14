@@ -104,6 +104,16 @@ const fmtDist = m => m==null ? '—'
   : m < 1000 ? `${m}m`
   : `${(m/1000).toFixed(m<10000?1:0)}km`;
 
+/* 徒歩時間は時速5kmで換算する（ユーザー指定） */
+const WALK_M_PER_MIN = 5000/60;
+const walkMin = m => m==null ? null : Math.max(1, Math.round(num(m)/WALK_M_PER_MIN));
+/** 結果に出す距離の表記。徒歩60分までは「徒歩◯分・650m」、それ以上は距離だけ */
+function distLabel(m){
+  if(m == null) return '—';
+  const w = walkMin(m);
+  return w <= 60 ? `徒歩${w}分・${fmtDist(m)}` : fmtDist(m);
+}
+
 /* ------------------------------------------------------------
    通知
    ------------------------------------------------------------ */

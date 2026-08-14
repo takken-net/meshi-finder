@@ -92,6 +92,16 @@ eq('fmtDist キロ',           fmtDist(6400),  '6.4km');
 eq('fmtDist 10km以上は整数', fmtDist(12300), '12km');
 eq('fmtDist null',           fmtDist(null),  '—');
 
+/* 徒歩時間（時速5km換算） */
+eq('walkMin 415m ≒ 5分',     walkMin(415), 5);
+eq('walkMin 830m ≒ 10分',    walkMin(830), 10);
+eq('walkMin 2500m = 30分',   walkMin(2500), 30);
+eq('walkMin ごく近くは1分',  walkMin(40), 1);
+eq('walkMin null',           walkMin(null), null);
+eq('distLabel は徒歩分と距離', distLabel(650), '徒歩8分・650m');
+eq('distLabel 遠距離は距離だけ', distLabel(6400), '6.4km');
+eq('distLabel null',         distLabel(null), '—');
+
 /* ============================================================
    5. ジャンル定義
    ============================================================ */
@@ -254,6 +264,15 @@ ok('住所が無ければ店名だけで検索', !tabelogUrl(newShop({ name:'X' 
 eq('店ページのURLが登録済みなら直行',
    tabelogUrl(newShop({ name:'X', tabelog:'https://tabelog.com/tokyo/A1304/A130401/13000001/' })),
    'https://tabelog.com/tokyo/A1304/A130401/13000001/');
+
+/* 店の詳細のリンクはタグ表示 */
+SEL.shop = withPos.id; SEL.edit = false;
+const dhtml = VIEWS.shops();
+ok('詳細のリンクがタグ型で出る', dhtml.includes('tag lnk'));
+ok('食べログのリンクが出る',     dhtml.includes('食べログ'));
+ok('経路のリンクが出る',         dhtml.includes('経路'));
+ok('評価の表記は My評価',        dhtml.includes('My評価') && !dhtml.includes('自分の評価'));
+SEL.shop = null;
 
 /* ============================================================
    10. ジャンルの自動判定
@@ -467,14 +486,28 @@ noThrow('ルーレット結果の画面', () => VIEWS.result());
 SEL.sub = ''; PICK = null;
 
 /* 条件の要約 */
-Q = { genres:['ramen'], kw:'つけ麺', openOnly:true, radius:1000 };
+Q = { genres:['ramen'], kw:'つけ麺', openOnly:true, radius:840, rate:4 };
 const cond = condHTML();
 ok('条件に ジャンルが出る',   cond.includes('ラーメン'));
 ok('条件に キーワードが出る', cond.includes('つけ麺'));
 ok('条件に 営業中が出る',     cond.includes('今やってる'));
-ok('条件に 距離が出る',       cond.includes('1km'));
-Q = { genres:[], kw:'', openOnly:false, radius:0 };
+ok('条件に 徒歩の範囲が出る', cond.includes('徒歩10分'));
+ok('条件に My評価が出る',     cond.includes('★4以上'));
+Q = { genres:[], kw:'', openOnly:false, radius:0, list:'', rate:0 };
 POS = null; GEO = 'idle';
+
+/* My評価（★の数）での絞り込み */
+DB = seed(); migrate();
+putShop(newShop({ name:'五つ星', myRate:5 }));
+putShop(newShop({ name:'三つ星', myRate:3 }));
+putShop(newShop({ name:'未評価' }));
+eq('★3以上で2軒',      searchShops({ rate:3 }, null, 0).length, 2);
+eq('★4以上で1軒',      searchShops({ rate:4 }, null, 0).length, 1);
+eq('★5のみで1軒',      searchShops({ rate:5 }, null, 0).length, 1);
+eq('指定なしなら全部',  searchShops({ rate:0 }, null, 0).length, 3);
+eq('歩ける範囲の選択肢に徒歩5分がある',
+   RADIUS_OPTS.some(([v,l]) => v === 420 && l.includes('5分')), true);
+eq('共有登録の既定リストは 行ってみたい', shareDefaultList(), '行ってみたい');
 
 /* ============================================================
    16. CSV パーサ

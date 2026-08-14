@@ -82,7 +82,7 @@ function shareFormHTML(){
         : '位置情報はあとでまとめて取得できます（設定タブでAPIキーを入れた場合）。'}</p>
     </div>`;
 }
-const shareDefaultList = () => (allLists().find(l => l.label === '共有から') ? '共有から' : '共有から');
+const shareDefaultList = () => '行ってみたい';    // 共有登録の既定リスト（確認画面で変更可）
 
 function cancelShared(){ SHARE = null; SEL.sub = ''; render(); }
 

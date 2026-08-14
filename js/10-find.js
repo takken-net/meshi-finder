@@ -1,13 +1,21 @@
 /* ============================================================
    10. 探す画面
    ============================================================ */
-let Q      = { genres:[], kw:'', openOnly:false, radius:0, list:'' };
+let Q      = { genres:[], kw:'', openOnly:false, radius:0, list:'', rate:0 };
 let POS    = null;            // 検索の起点 { lat, lng, acc, label }
 let GEO    = 'idle';          // idle | loading | ok | deny | fail
 let GEOERR = '';
 let PICK   = null;            // ルーレットで選ばれた店
 
-const RADIUS_OPTS = [[0,'指定なし'],[500,'500m以内'],[1000,'1km以内'],[3000,'3km以内'],[10000,'10km以内']];
+/* 歩いて行ける範囲（時速5kmで換算。5分≒420m）。0 は絞らない */
+const RADIUS_OPTS = [
+  [420,  '徒歩5分以内'],
+  [840,  '徒歩10分以内'],
+  [1680, '徒歩20分以内'],
+  [0,    '30分以上もOK（すべて）'],
+];
+/* My評価（★の数）での絞り込み */
+const RATE_OPTS = [[0,'指定なし'],[3,'★3以上'],[4,'★4以上'],[5,'★5のみ']];
 
 /** いまの条件で該当する店（近い順） */
 const currentRows = () => searchShops(Q, POS, null);
@@ -85,12 +93,18 @@ VIEWS.find = () => {
           `<option value="${esc(l.label)}" ${Q.list===l.label?'selected':''}>${esc(l.label)}（${fmt(l.n)}）</option>`).join('')}
       </select>` : ''}
 
-    <label class="lbl">距離</label>
+    <label class="lbl">歩いて行ける範囲<span class="mini">（時速5kmで計算）</span></label>
     <select class="fld" onchange="Q.radius=num(this.value); updateHits()">
       ${RADIUS_OPTS.map(([v,l]) =>
         `<option value="${v}" ${num(Q.radius)===v?'selected':''}>${l}</option>`).join('')}
     </select>
-    ${(Q.radius && !POS) ? '<p class="mini">※ 起点が決まっていないため距離は使われません</p>' : ''}
+    ${(Q.radius && !POS) ? '<p class="mini">※ 起点が決まっていないため範囲は使われません</p>' : ''}
+
+    <label class="lbl">My評価<span class="mini">（自分で付けた★で絞ります）</span></label>
+    <select class="fld" onchange="Q.rate=num(this.value); updateHits()">
+      ${RATE_OPTS.map(([v,l]) =>
+        `<option value="${v}" ${num(Q.rate)===v?'selected':''}>${l}</option>`).join('')}
+    </select>
 
     <div class="hit" id="hit">${hitLabel(n)}</div>
 

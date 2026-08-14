@@ -28,7 +28,7 @@ function shopListHTML(){
       <select class="fld sm" onchange="SHOP_Q.sort=this.value; renderShopList()">
         <option value="name"   ${SHOP_Q.sort==='name'  ?'selected':''}>名前順</option>
         <option value="new"    ${SHOP_Q.sort==='new'   ?'selected':''}>登録が新しい順</option>
-        <option value="rate"   ${SHOP_Q.sort==='rate'  ?'selected':''}>自分の評価順</option>
+        <option value="rate"   ${SHOP_Q.sort==='rate'  ?'selected':''}>My評価順</option>
       </select>
       <select class="fld sm" onchange="SHOP_Q.only=this.value; renderShopList()">
         <option value=""        ${SHOP_Q.only===''       ?'selected':''}>すべて</option>
@@ -116,7 +116,7 @@ function shopDetailHTML(){
       ${(s.lists||[]).map(l=>`<span class="tag list">${esc(l)}</span>`).join('')}</div>
 
     <div class="kv">
-      <div><span>自分の評価</span>${starPicker(s.myRate, 'rateShop')}</div>
+      <div><span>My評価</span>${starPicker(s.myRate, 'rateShop')}</div>
       ${s.gRating ? `<div><span>Google</span>★${fmt1(s.gRating)}（${fmt(s.gCount)}件）</div>` : ''}
       ${s.addr    ? `<div><span>住所</span>${esc(s.addr)}</div>` : ''}
       <div><span>位置</span>${s.lat!=null ? `${fmt1(s.lat)}, ${fmt1(s.lng)}`
@@ -134,10 +134,10 @@ function shopDetailHTML(){
         <p class="mini na">※ 祝日・臨時休業は反映されません。念のため Google マップでも確認してください。</p>
       </details>` : ''}
 
-    <div class="row gap mt">
-      <a class="btn pri" href="${esc(mapsUrl(s))}" target="_blank" rel="noopener">Googleマップで見る</a>
-      <a class="btn" href="${esc(tabelogUrl(s))}" target="_blank" rel="noopener">${s.tabelog ? '食べログ' : '食べログで検索'}</a>
-      <a class="btn" href="${esc(routeUrl(s))}" target="_blank" rel="noopener">経路</a>
+    <div class="tags mt">
+      <a class="tag lnk" href="${esc(mapsUrl(s))}" target="_blank" rel="noopener">🗺 Googleマップ</a>
+      <a class="tag lnk" href="${esc(tabelogUrl(s))}" target="_blank" rel="noopener">🍽 食べログ</a>
+      <a class="tag lnk" href="${esc(routeUrl(s))}" target="_blank" rel="noopener">🚶 経路</a>
     </div>
 
     ${DB.settings.apiKey ? `
@@ -206,7 +206,7 @@ function shopEditHTML(){
            placeholder="https://tabelog.com/tokyo/...">
 
 
-    <label class="lbl">自分の評価</label>
+    <label class="lbl">My評価</label>
     <div id="e-rate">${starPicker(e.myRate, 'setEditRate')}</div>
 
     <label class="lbl">メモ</label>
