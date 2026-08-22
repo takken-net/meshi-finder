@@ -1,7 +1,7 @@
 /* ============================================================
    10. 探す画面
    ============================================================ */
-let Q      = { genres:[], kw:'', openOnly:false, radius:0, list:'', rate:0 };
+let Q      = { genres:[], kw:'', openOnly:false, radius:0, rate:0 };
 let POS    = null;            // 検索の起点 { lat, lng, acc, label }
 let GEO    = 'idle';          // idle | loading | ok | deny | fail
 let GEOERR = '';
@@ -80,31 +80,14 @@ VIEWS.find = () => {
     <input id="f-kw" class="fld" type="search" placeholder="例: つけ麺　一人向き"
            value="${esc(Q.kw)}" oninput="onFindKw(this.value)">
 
-    <div class="row gap mt">
+    <div class="row gap mt cond-row">
       <label class="sw"><input type="checkbox" ${Q.openOnly?'checked':''}
         onchange="Q.openOnly=this.checked; updateHits()"><span>今やってる店だけ</span></label>
+      <select class="fld sm grow" onchange="Q.rate=num(this.value); updateHits()">
+        ${RATE_OPTS.map(([v,l]) =>
+          `<option value="${v}" ${num(Q.rate)===v?'selected':''}>My評価 ${l}</option>`).join('')}
+      </select>
     </div>
-
-    ${allLists().length ? `
-      <label class="lbl">リスト<span class="mini">（取り込み元で絞ります）</span></label>
-      <select class="fld" onchange="Q.list=this.value; updateHits()">
-        <option value="">すべて</option>
-        ${allLists().map(l =>
-          `<option value="${esc(l.label)}" ${Q.list===l.label?'selected':''}>${esc(l.label)}（${fmt(l.n)}）</option>`).join('')}
-      </select>` : ''}
-
-    <label class="lbl">歩いて行ける範囲<span class="mini">（時速5kmで計算）</span></label>
-    <select class="fld" onchange="Q.radius=num(this.value); updateHits()">
-      ${RADIUS_OPTS.map(([v,l]) =>
-        `<option value="${v}" ${num(Q.radius)===v?'selected':''}>${l}</option>`).join('')}
-    </select>
-    ${(Q.radius && !POS) ? '<p class="mini">※ 起点が決まっていないため範囲は使われません</p>' : ''}
-
-    <label class="lbl">My評価<span class="mini">（自分で付けた★で絞ります）</span></label>
-    <select class="fld" onchange="Q.rate=num(this.value); updateHits()">
-      ${RATE_OPTS.map(([v,l]) =>
-        `<option value="${v}" ${num(Q.rate)===v?'selected':''}>${l}</option>`).join('')}
-    </select>
 
     <div class="hit" id="hit">${hitLabel(n)}</div>
 
@@ -112,6 +95,13 @@ VIEWS.find = () => {
       <button class="pri grow" onclick="doSearch()">この条件で探す</button>
       <button class="grow" onclick="doRoulette()">🎲 おまかせ1軒</button>
     </div>
+
+    <label class="lbl mt2">歩いて行ける範囲<span class="mini">（時速5kmで計算）</span></label>
+    <select class="fld" onchange="Q.radius=num(this.value); updateHits()">
+      ${RADIUS_OPTS.map(([v,l]) =>
+        `<option value="${v}" ${num(Q.radius)===v?'selected':''}>${l}</option>`).join('')}
+    </select>
+    ${(Q.radius && !POS) ? '<p class="mini">※ 起点が決まっていないため範囲は使われません</p>' : ''}
 
     ${DB.shops.length ? '' : `<div class="note mt">
       まだ店が登録されていません。<a onclick="go('shops')">お店タブ</a>で追加するか、

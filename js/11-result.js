@@ -34,7 +34,6 @@ function condHTML(){
   const p = [];
   p.push(POS ? `📍 ${esc(POS.label)}から近い順` : '📍 起点なし（評価順）');
   if(Q.genres.length) p.push(genreLabels(Q.genres).join('・'));
-  if(Q.list)          p.push(esc(Q.list));
   if(Q.kw)            p.push(`「${esc(Q.kw)}」`);
   if(Q.openOnly)      p.push('今やってる店');
   if(Q.rate)          p.push(`★${num(Q.rate)}以上`);

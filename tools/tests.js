@@ -477,6 +477,10 @@ Q = { genres:[], kw:'', openOnly:false, radius:0 };
 POS = null; PICK = null; SEL.sub = '';
 
 noThrow('探す画面（起点なし）',   () => VIEWS.find());
+ok('リストの絞り込みは出さない',   !VIEWS.find().includes('取り込み元で絞ります'));
+ok('今やってると My評価が同列',    VIEWS.find().includes('cond-row'));
+ok('探すボタンが徒歩範囲より上',
+   VIEWS.find().indexOf('この条件で探す') < VIEWS.find().indexOf('歩いて行ける範囲'));
 POS = { lat:35.6812, lng:139.7671, acc:20, label:'現在地' };
 GEO = 'ok';
 noThrow('探す画面（起点あり）',   () => VIEWS.find());
@@ -1189,6 +1193,8 @@ SEL.sub = 'share'; TAB = 'data';
 noThrow('共有の確認画面が描画できる', () => VIEWS.data());
 ok('店名が初期表示される', VIEWS.data().includes('麺屋こうじ'));
 ok('登録ボタンが出る',     VIEWS.data().includes('この店を登録'));
+ok('項目名がキーワードになっている', VIEWS.data().includes('キーワード'));
+ok('旧文言は出さない',     !VIEWS.data().includes('場所の手がかり'));
 
 DB.settings.apiKey = '';
 $('#view').innerHTML = VIEWS.data();          // 入力欄を本物のDOMに出してから保存する

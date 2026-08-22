@@ -67,8 +67,9 @@ function shareFormHTML(){
       <label class="lbl">店名</label>
       <input id="sh-name" class="fld" type="text" value="${esc(SHARE.name)}"
              placeholder="店名を入れてください">
-      <label class="lbl">場所の手がかり<span class="mini">（住所や駅名。あると取り違えにくくなります）</span></label>
-      <input id="sh-addr" class="fld" type="text" value="${esc(SHARE.addr)}">
+      <label class="lbl">キーワード<span class="mini">（駅名・エリア・特徴など。あとで探すときに引っかかりやすくなります）</span></label>
+      <input id="sh-addr" class="fld" type="text" value="${esc(SHARE.addr)}"
+             placeholder="例: 新宿 / つけ麺 / 一人向き">
       <label class="lbl">リスト<span class="mini">（任意）</span></label>
       <input id="sh-list" class="fld" type="text" value="${esc(shareDefaultList())}"
              placeholder="例: 共有から">
