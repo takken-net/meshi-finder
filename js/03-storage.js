@@ -139,13 +139,19 @@ function delShop(id){
 /* ------------------------------------------------------------
    バックアップ
    ------------------------------------------------------------ */
+/** バックアップの中身を作る。
+    APIキーは含めない（バックアップはメール等で端末間を運ぶ前提のファイルであり、
+    「キーは端末の外に出さない」という方針を守るため）。復元先で入れ直してもらう */
+function backupJSON(){
+  return JSON.stringify(DB,
+    (k, v) => k === '_hay' ? undefined : k === 'apiKey' ? '' : v, 2);
+}
 function exportJSON(){
-  const json = JSON.stringify(DB, (k, v) => k === '_hay' ? undefined : v, 2);
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([json], { type:'application/json' }));
+  a.href = URL.createObjectURL(new Blob([backupJSON()], { type:'application/json' }));
   a.download = `食べ探バックアップ_${today()}.json`;
   a.click();
-  toast('バックアップを書き出しました');
+  toast('バックアップを書き出しました（APIキーは含まれません）');
 }
 function importJSON(inp){
   const f = inp.files[0]; if(!f) return;
@@ -155,7 +161,10 @@ function importJSON(inp){
       const next = JSON.parse(e.target.result);
       if(!next || !Array.isArray(next.shops)) throw new Error('形式が違います');
       if(!confirm(`${next.shops.length} 軒のデータで置き換えます。今のデータは消えます。よろしいですか？`)) return;
-      DB = next; migrate(); save(); render();
+      const key = (DB && DB.settings && DB.settings.apiKey) || '';   // この端末のキーは残す
+      DB = next; migrate();
+      if(!DB.settings.apiKey) DB.settings.apiKey = key;
+      save(); render();
       toast(`${DB.shops.length} 軒を復元しました`);
     }catch(err){ alert('読み込めませんでした: ' + err.message); }
   };

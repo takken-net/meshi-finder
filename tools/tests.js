@@ -156,6 +156,15 @@ const saved = window.__mem[LS_KEY] || '';
 ok('save の中身が JSON として読める', (() => { try{ JSON.parse(saved); return true; }catch(e){ return false; } })());
 ok('save に _hay が混ざらない', !saved.includes('_hay'), saved.slice(0, 160));
 
+/* バックアップにAPIキーが漏れないこと（バックアップはメール等で運ばれるファイルのため） */
+DB.settings.apiKey = 'AIzaSECRET-TEST-KEY';
+const bk = backupJSON();
+ok('バックアップにAPIキーが入らない', !bk.includes('AIzaSECRET-TEST-KEY'));
+ok('バックアップの apiKey は空文字',  bk.includes('"apiKey": ""'));
+ok('端末側のキーは消えていない',      DB.settings.apiKey === 'AIzaSECRET-TEST-KEY');
+ok('バックアップは JSON として読める', (() => { try{ JSON.parse(bk); return true; }catch(e){ return false; } })());
+DB.settings.apiKey = '';
+
 /* 削除で関連データも消えること */
 DB.queue.push(s1.id);
 delShop(s1.id);
