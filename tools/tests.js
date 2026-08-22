@@ -1110,6 +1110,78 @@ API_SHOW = true;
 ok('表示に切り替えられる',       VIEWS.set().includes('type="text"'));
 API_SHOW = false;
 
+/* ============================================================
+   24b. 起点の切替（探す画面から、現在地以外の場所を起点にする）
+
+   現在地が取れている間も、いつでも別の起点に切り替えられること、
+   駅名やエリア名を検索して起点にできることを確認します。
+   ============================================================ */
+DB = seed(); migrate(); DB.settings.apiKey = 'TEST-KEY'; DB.settings.dailyLimit = 100;
+POS = { lat:35.6812, lng:139.7671, acc:20, label:'現在地' }; GEO = 'ok'; ORIGIN_OPEN = false;
+
+ok('現在地取得後も「変える」ボタンが出る', VIEWS.find().includes('変える'));
+toggleOriginPicker();
+eq('押すと切替パネルが開く', ORIGIN_OPEN, true);
+ok('パネルに現在地を使うボタンがある', VIEWS.find().includes('現在地を使う'));
+ok('パネルに駅名検索の欄がある',       VIEWS.find().includes('駅名やエリア名で探す'));
+toggleOriginPicker();
+eq('もう一度押すと閉じる', ORIGIN_OPEN, false);
+
+/* 登録済みの地点は、現在地取得済みの状態からでもいつでも選べる */
+DB.settings.places = [{ id:'P1', label:'渋谷駅', lat:35.658, lng:139.702 }];
+ORIGIN_OPEN = true;
+ok('登録地点の選択欄が出る', VIEWS.find().includes('渋谷駅'));
+usePlace('P1');
+eq('地点を選ぶと起点になる',   POS.label, '渋谷駅');
+eq('地点の座標に切り替わる',   POS.lat, 35.658);
+eq('選ぶとパネルが閉じる',     ORIGIN_OPEN, false);
+
+/* 駅名やエリア名を検索して起点にする（07-places.js の searchPlace を使うだけで、
+   ここから直接 fetch はしない） */
+DB.settings.usage = { date: today(), n: 0 };
+plan({ body:{ places:[PJ({ displayName:{text:'渋谷駅'},
+                          location:{ latitude:35.6580, longitude:139.7016 } })] } });
+await searchOriginByName('渋谷駅');
+eq('検索結果が起点になる',   POS.label, '渋谷駅');
+near('緯度も入る',           POS.lat, 35.658, 0.001);
+eq('使用回数が1増える',      DB.settings.usage.n, 1);
+eq('検索後はパネルが閉じる', ORIGIN_OPEN, false);
+eq('前回の位置としても記憶される', DB.settings.lastPos.lat, POS.lat);
+
+/* 変わってはいけないケース */
+const before = POS;
+await searchOriginByName('');
+eq('空文字では何もしない', POS, before);
+
+plan({ body:{ places:[] } });
+await searchOriginByName('存在しない場所');
+eq('0件なら起点を変えない', POS, before);
+
+window.__alerts = [];
+DB.settings.apiKey = '';
+await searchOriginByName('渋谷駅');
+eq('APIキーが無ければ起点を変えない', POS, before);
+ok('APIキーが無いことを伝える', window.__alerts.some(a => a.includes('APIキー')));
+DB.settings.apiKey = 'TEST-KEY';
+
+window.__alerts = [];
+DB.settings.dailyLimit = 0;
+await searchOriginByName('渋谷駅');
+eq('本日の上限に達していれば起点を変えない', POS, before);
+ok('上限に達したことを伝える', window.__alerts.some(a => a.includes('上限')));
+DB.settings.dailyLimit = 100;
+
+/* 検索欄（本物のDOM）に入れた値がそのまま使われること */
+ORIGIN_OPEN = true;
+$('#view').innerHTML = VIEWS.find();
+$('#origin-q').value = '新宿駅';
+plan({ body:{ places:[PJ({ displayName:{text:'新宿駅'},
+                          location:{ latitude:35.6896, longitude:139.7006 } })] } });
+await doOriginSearch();
+eq('検索欄の値が使われる', POS.label, '新宿駅');
+
+POS = null; GEO = 'idle'; ORIGIN_OPEN = false; DB.settings.places = [];
+
 window.fetch = realFetch;
 DB = seed(); migrate();
 

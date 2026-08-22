@@ -188,6 +188,10 @@ select.fld{ appearance:none; padding-right:28px;
   .tag.soon{ background:#3a2c14; }
 }
 .note.ok{ border-color:var(--ok); }
+/* 起点の切替パネル（探す画面）専用。中のボタン・選択欄・検索フォームを縦に並べる。
+   バッジ側の .note（現在地表示など）は影響を受けないよう、専用クラスに限定している */
+.origin-pick > button, .origin-pick > select.fld, .origin-pick > form{ display:block; width:100%; margin-top:8px; }
+.origin-pick > button:first-child{ margin-top:0; }
 
 /* ---------- 地図のピン ---------- */
 .pin{

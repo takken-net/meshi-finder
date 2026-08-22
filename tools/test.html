@@ -65,6 +65,13 @@ try{
     configurable: true,
   });
 }catch(e){}
+
+/* alert()/confirm() は本物のダイアログを出すと、押す人がいないヘッドレス環境で
+   固まって戻ってきません（新しいヘッドレスモードは自動で閉じてくれないため）。
+   代わりに記録するだけのスタブに差し替えます。呼ばれた内容は window.__alerts に残ります */
+window.__alerts = [];
+window.alert = msg => { window.__alerts.push(String(msg)); };
+window.confirm = () => window.__confirmAnswer !== false;   // 既定は「OK」。個別のテストで変えられる
 </script>
 
 <script src="../vendor/leaflet/leaflet.js"></script>

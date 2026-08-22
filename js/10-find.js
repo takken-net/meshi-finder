@@ -6,6 +6,8 @@ let POS    = null;            // 検索の起点 { lat, lng, acc, label }
 let GEO    = 'idle';          // idle | loading | ok | deny | fail
 let GEOERR = '';
 let PICK   = null;            // ルーレットで選ばれた店
+let ORIGIN_OPEN = false;      // 起点の切替パネルを開いているか
+let ORIGIN_BUSY = false;      // 駅名などの検索中か
 
 /* 歩いて行ける範囲（時速5kmで換算。5分≒420m）。0 は絞らない */
 const RADIUS_OPTS = [
@@ -33,7 +35,7 @@ function locate(){
     p => {
       POS = { lat:p.coords.latitude, lng:p.coords.longitude,
               acc:Math.round(p.coords.accuracy||0), label:'現在地' };
-      GEO = 'ok';
+      GEO = 'ok'; ORIGIN_OPEN = false;
       DB.settings.lastPos = { lat:POS.lat, lng:POS.lng, at:today() };
       save(); render();
     },
@@ -42,23 +44,58 @@ function locate(){
       GEOERR = (e && e.code === 1)
         ? '位置情報の利用が許可されていません'
         : '現在地を取得できませんでした';
-      render();
+      render();               // 失敗時はパネルを開いたままにして他の起点を選べるようにする
     },
     { enableHighAccuracy:true, timeout:10000, maximumAge:60000 }
   );
 }
+
+/** 起点の切替パネルを開閉する。現在地が取れているときも、駅名検索などに切り替えられるように */
+function toggleOriginPicker(){ ORIGIN_OPEN = !ORIGIN_OPEN; render(); }
 
 /** 登録しておいた地点を起点にする */
 function usePlace(id){
   if(!id){ POS = null; GEO = 'idle'; render(); return; }
   if(id === '__last'){
     const p = DB.settings.lastPos;
-    if(p){ POS = { lat:p.lat, lng:p.lng, acc:0, label:`前回の位置（${p.at}）` }; GEO = 'ok'; }
+    if(p){ POS = { lat:p.lat, lng:p.lng, acc:0, label:`前回の位置（${p.at}）` }; GEO = 'ok'; ORIGIN_OPEN = false; }
     render(); return;
   }
   const p = (DB.settings.places||[]).find(x => x.id === id);
-  if(p){ POS = { lat:p.lat, lng:p.lng, acc:0, label:p.label }; GEO = 'ok'; }
+  if(p){ POS = { lat:p.lat, lng:p.lng, acc:0, label:p.label }; GEO = 'ok'; ORIGIN_OPEN = false; }
   render();
+}
+
+/** 駅名やエリア名で地点を検索し、そのまま検索の起点にする（Places APIを1回だけ使う）。
+    店の位置取得と同じ 07-places.js の searchPlace() を呼ぶだけで、
+    ここから直接 fetch はしない（API を叩く箇所を1つに保つため） */
+async function searchOriginByName(q){
+  const query = String(q||'').trim();
+  if(!query) return;
+  if(!DB.settings.apiKey){
+    alert('駅名やエリア名での検索には設定タブでAPIキーを入れる必要があります。\n'
+        + 'キーが無い場合は設定タブから緯度経度で地点を登録することもできます。');
+    return;
+  }
+  if(quotaLeft() <= 0){ alert('本日のAPI利用上限に達しています。日付が変わるとまた使えます。'); return; }
+
+  ORIGIN_BUSY = true; render();
+  try{
+    const places = await searchPlace(query, '', POS || DB.settings.lastPos);
+    const np = places.length ? normPlace(places[0]) : null;
+    if(!np || np.lat == null){ toast('見つかりませんでした'); return; }
+    POS = { lat:np.lat, lng:np.lng, acc:0, label: np.name || query };
+    GEO = 'ok'; ORIGIN_OPEN = false;
+    DB.settings.lastPos = { lat:POS.lat, lng:POS.lng, at:today() };
+  }catch(e){
+    alert(typeof apiErrorHint === 'function' ? apiErrorHint(e) : ('検索に失敗しました: ' + e.message));
+  }finally{
+    ORIGIN_BUSY = false; save(); render();
+  }
+}
+/** 検索欄（#origin-q）の値を読んで searchOriginByName に渡す */
+function doOriginSearch(){
+  return searchOriginByName((($('#origin-q')||{}).value) || '');
 }
 
 /** 探す画面を開いたら一度だけ位置を取りにいく */
@@ -110,36 +147,58 @@ VIEWS.find = () => {
 };
 
 function posCardHTML(){
-  const places = DB.settings.places || [];
-  const hasLast = !!DB.settings.lastPos;
+  return posBadgeHTML() + (ORIGIN_OPEN ? originPickerHTML() : '');
+}
 
+/** いまの起点の状態。「変える」で常にパネルを開けるようにする
+    （現在地の取得が成功していても、駅名など別の起点に切り替えたいことがあるため） */
+function posBadgeHTML(){
   if(GEO === 'loading')
     return `<div class="note">現在地を確認しています…</div>`;
 
   if(GEO === 'ok' && POS)
     return `<div class="note ok row between">
       <span>📍 ${esc(POS.label)}${POS.acc ? `<span class="mini">（誤差およそ ±${fmt(POS.acc)}m）</span>` : ''}</span>
-      <button class="ghost sm" onclick="locate()">取り直す</button>
+      <button class="ghost sm" onclick="toggleOriginPicker()">${ORIGIN_OPEN?'閉じる':'変える'}</button>
     </div>`;
 
   if(GEO === 'deny' || GEO === 'fail')
-    return `<div class="note warn">
-      <div class="row between"><span>${esc(GEOERR)}</span>
-        <button class="ghost sm" onclick="locate()">再試行</button></div>
-      ${(places.length || hasLast) ? `
-        <select class="fld sm mt" onchange="usePlace(this.value)">
-          <option value="">起点を選ぶ…</option>
-          ${hasLast ? `<option value="__last">前回の位置（${esc(DB.settings.lastPos.at)}）</option>` : ''}
-          ${places.map(p => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('')}
-        </select>`
-      : `<p class="mini">起点が無くても検索できます（距離順には並びません）。
-           よく行く場所は<a onclick="go('set')">設定</a>から登録できます。</p>`}
+    return `<div class="note warn row between">
+      <span>${esc(GEOERR)}</span>
+      <button class="ghost sm" onclick="toggleOriginPicker()">${ORIGIN_OPEN?'閉じる':'地点を選ぶ'}</button>
     </div>`;
 
   return `<div class="note row between">
     <span class="mini">現在地はまだ取得していません</span>
-    <button class="sm" onclick="locate()">現在地を使う</button>
+    <button class="sm" onclick="toggleOriginPicker()">${ORIGIN_OPEN?'閉じる':'地点を選ぶ'}</button>
   </div>`;
+}
+
+/** 起点の切替パネル。現在地・登録済みの地点・駅名やエリア名の検索の3通り */
+function originPickerHTML(){
+  const places = DB.settings.places || [];
+  const hasLast = !!DB.settings.lastPos;
+  return `
+    <div class="note origin-pick mt">
+      <button onclick="locate()">📍 現在地を使う</button>
+
+      ${(places.length || hasLast) ? `
+        <select class="fld sm mt" onchange="usePlace(this.value)">
+          <option value="">登録した地点から選ぶ…</option>
+          ${hasLast ? `<option value="__last">前回の位置（${esc(DB.settings.lastPos.at)}）</option>` : ''}
+          ${places.map(p => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('')}
+        </select>` : ''}
+
+      <label class="lbl">駅名やエリア名で探す<span class="mini">（例: 渋谷駅）</span></label>
+      <form class="row gap" onsubmit="event.preventDefault(); doOriginSearch();">
+        <input id="origin-q" class="fld sm grow" type="text" placeholder="例: 渋谷駅"
+               ${ORIGIN_BUSY?'disabled':''}>
+        <button type="button" ${ORIGIN_BUSY?'disabled':''} onclick="doOriginSearch()">${ORIGIN_BUSY?'検索中…':'検索'}</button>
+      </form>
+      ${DB.settings.apiKey ? ''
+        : `<p class="mini">駅名検索にはAPIキーの設定が必要です（<a onclick="go('set')">設定</a>）。
+             キーが無い場合は<a onclick="go('set')">設定</a>から緯度経度で地点を登録することもできます。</p>`}
+    </div>`;
 }
 
 function findGenreChips(){
