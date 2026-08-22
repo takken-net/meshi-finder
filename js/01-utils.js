@@ -84,6 +84,16 @@ function normName(s){
     .replace(/[ぁ-ゖ]/g, c=>String.fromCharCode(c.charCodeAt(0)+0x60));  // ひらがな→カタカナ
 }
 
+/** 空白・カンマ・スラッシュ区切りの文字列をタグの配列に分ける（前後の空白除去・重複除去・順序維持） */
+function splitWords(s){
+  const seen = new Set(), out = [];
+  for(const w of String(s ?? '').split(/[,，、\/／\s　]+/)){
+    const t = w.trim();
+    if(t && !seen.has(t)){ seen.add(t); out.push(t); }
+  }
+  return out;
+}
+
 /* ------------------------------------------------------------
    距離
    ------------------------------------------------------------ */

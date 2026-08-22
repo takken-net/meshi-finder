@@ -145,10 +145,13 @@ function findDup(cand, list){
 }
 
 /** 既存の店に取り込み分を重ねる。ユーザー資産（評価・タグ・メモ）は絶対に触らない。
-    ただし取り込み元のリスト名だけは「足し算」で増やす（同じ店が複数のリストに入るため） */
+    ただしリスト名とタグは「足し算」で増やす（同じ店が複数のリストに入ったり、
+    共有登録のキーワードでタグが増えたりするため。既存のタグを消すことはない） */
 function mergeShop(dst, src){
   for(const l of (src.lists||[]))
     if(l && !(dst.lists||[]).includes(l)) (dst.lists ||= []).push(l);
+  for(const t of (src.tags||[]))
+    if(t && !(dst.tags||[]).includes(t)) (dst.tags ||= []).push(t);
 
   if(!dst.placeId && src.placeId){ dst.placeId = src.placeId; }
   if(!dst.srcId   && src.srcId)    dst.srcId   = src.srcId;

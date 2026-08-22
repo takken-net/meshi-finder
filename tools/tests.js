@@ -76,6 +76,17 @@ eq('括弧を無視',         normName('日高屋（新宿店）'), normName('�
 eq('null は空文字',      normName(null), '');
 ok('別の店は一致しない', normName('麺屋こうじ') !== normName('麺屋こうへい'));
 
+/* splitWords（共有登録のキーワード欄をタグに分ける） */
+eq('スラッシュ区切り', splitWords('新宿 / つけ麺 / 一人向き').join(','), '新宿,つけ麺,一人向き');
+eq('カンマ区切り',     splitWords('新宿,つけ麺,一人向き').join(','),   '新宿,つけ麺,一人向き');
+eq('読点区切り',       splitWords('新宿、つけ麺').join(','),           '新宿,つけ麺');
+eq('空白区切り（半角・全角混在）', splitWords('新宿 つけ麺　一人向き').join(','), '新宿,つけ麺,一人向き');
+eq('前後の空白を削る', splitWords('  新宿  ').join(','), '新宿');
+eq('重複は1つにまとめる', splitWords('新宿, 新宿, 渋谷').join(','), '新宿,渋谷');
+eq('空文字は空配列',   splitWords('').length, 0);
+eq('null でも落ちない', splitWords(null).length, 0);
+eq('区切りだけの文字列は空配列', splitWords(' , / ').length, 0);
+
 /* ============================================================
    4. 距離
    ============================================================ */
@@ -649,6 +660,13 @@ eq('空だった placeId は埋まる', mine.placeId, 'ChIJ_BBB');
 eq('空だった座標は埋まる', mine.lat, 35.68);
 eq('空だった住所は埋まる', mine.addr, '東京都');
 
+/* タグはリストと同じく「足し算」で増える（既存のタグは消えない） */
+const tagMine = putShop(newShop({ name:'タグ検証', tags:['一人向き'] }));
+mergeShop(tagMine, newShop({ name:'タグ検証', tags:['新宿','一人向き'] }));
+eq('新しいタグが足される',   tagMine.tags.includes('新宿'), true);
+eq('既存のタグは残る',       tagMine.tags.includes('一人向き'), true);
+eq('同じタグは重複しない',   tagMine.tags.filter(t => t==='一人向き').length, 1);
+
 const blank = newShop({ name:'空の店' });
 mergeShop(blank, newShop({ name:'空の店', memo:'CSVのメモ' }));
 eq('メモが空なら CSV の内容が入る', blank.memo, 'CSVのメモ');
@@ -1212,6 +1230,21 @@ $('#view').innerHTML = VIEWS.data();
 await saveShared();
 eq('同じ店は二重に登録されない', DB.shops.length, 1);
 eq('キューも二重にならない',     DB.queue.length, 1);
+
+/* キーワード欄はその場でタグのプレビューになり、登録すると本当にタグへ入る */
+ok('プレビューは分割したタグを表示', shareTagsPreviewHTML('新宿 / つけ麺').includes('つけ麺'));
+eq('空なら何も表示しない', shareTagsPreviewHTML(''), '');
+
+DB = seed(); migrate();
+SHARE = parseShared('', '鮨たなか\nhttps://maps.app.goo.gl/xyz', '');
+TAB = 'data'; SEL.sub = 'share';
+$('#view').innerHTML = VIEWS.data();
+$('#sh-addr').value = '新宿 / 個室あり / 新宿';   // 重複の「新宿」は1つにまとまるはず
+await saveShared();
+const tanaka = DB.shops.find(s => s.name === '鮨たなか');
+eq('キーワードがタグになる',       tanaka.tags.join(','), '新宿,個室あり');
+eq('キーワードは住所欄にも残る',   tanaka.addr, '新宿 / 個室あり / 新宿');
+ok('タグはキーワード検索にも使われる', kwMatch(tanaka, '個室あり'));
 
 TAB = 'find'; SEL.sub = ''; SEL.shop = null;
 DB = seed(); migrate();

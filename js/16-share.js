@@ -67,9 +67,10 @@ function shareFormHTML(){
       <label class="lbl">店名</label>
       <input id="sh-name" class="fld" type="text" value="${esc(SHARE.name)}"
              placeholder="店名を入れてください">
-      <label class="lbl">キーワード<span class="mini">（駅名・エリア・特徴など。あとで探すときに引っかかりやすくなります）</span></label>
+      <label class="lbl">キーワード<span class="mini">（駅名・エリア・特徴など。空白/カンマ/スラッシュ区切りでタグにもなります）</span></label>
       <input id="sh-addr" class="fld" type="text" value="${esc(SHARE.addr)}"
-             placeholder="例: 新宿 / つけ麺 / 一人向き">
+             placeholder="例: 新宿 / つけ麺 / 一人向き" oninput="updateShareTagsPreview(this.value)">
+      <div id="sh-tags-preview" class="tags mt">${shareTagsPreviewHTML(SHARE.addr)}</div>
       <label class="lbl">リスト<span class="mini">（任意）</span></label>
       <input id="sh-list" class="fld" type="text" value="${esc(shareDefaultList())}"
              placeholder="例: 共有から">
@@ -85,6 +86,15 @@ function shareFormHTML(){
 }
 const shareDefaultList = () => '行ってみたい';    // 共有登録の既定リスト（確認画面で変更可）
 
+/** キーワード欄の入力から、実際にタグになる語をその場でプレビューする */
+function shareTagsPreviewHTML(v){
+  return splitWords(v).map(t => `<span class="tag alt">${esc(t)}</span>`).join('');
+}
+/* 入力欄は作り直さず、プレビューの箱だけ差し替える（IME変換の途中で消えないように） */
+function updateShareTagsPreview(v){
+  const el = $('#sh-tags-preview'); if(el) el.innerHTML = shareTagsPreviewHTML(v);
+}
+
 function cancelShared(){ SHARE = null; SEL.sub = ''; render(); }
 
 async function saveShared(){
@@ -95,7 +105,9 @@ async function saveShared(){
   const list = (($('#sh-list')||{}).value || '').trim();
 
   const cand = newShop({
-    name, addr, srcUrl: SHARE.url, src: 'share',
+    /* addr にはキーワード欄の生の文字列を保持（Places への位置ヒント・検索対象として使う）。
+       tags には同じ内容を語ごとに分けて入れる（一覧やタグ検索でチップとして見えるように） */
+    name, addr, tags: splitWords(addr), srcUrl: SHARE.url, src: 'share',
     placeId: SHARE.placeId || '', srcId: SHARE.srcId || '',
     lat: SHARE.lat, lng: SHARE.lng,
     lists: list ? [list] : [],
