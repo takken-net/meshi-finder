@@ -135,9 +135,11 @@ function shopDetailHTML(){
       </details>` : ''}
 
     <div class="tags mt">
+      <a class="tag lnk" href="${esc(routeUrl(s))}" target="_blank" rel="noopener">🚶 経路</a>
       <a class="tag lnk" href="${esc(mapsUrl(s))}" target="_blank" rel="noopener">🗺 Googleマップ</a>
       <a class="tag lnk" href="${esc(tabelogUrl(s))}" target="_blank" rel="noopener">🍽 食べログ</a>
-      <a class="tag lnk" href="${esc(routeUrl(s))}" target="_blank" rel="noopener">🚶 経路</a>
+      <a class="tag lnk" href="${esc(instaUrl(s))}" target="_blank" rel="noopener">📷 インスタ</a>
+      <a class="tag lnk" href="${esc(tiktokUrl(s))}" target="_blank" rel="noopener">🎵 TikTok</a>
     </div>
 
     ${DB.settings.apiKey ? `

@@ -83,6 +83,11 @@ const routeUrl = sh => sh.lat != null
   ? `https://www.google.com/maps/dir/?api=1&destination=${sh.lat},${sh.lng}`
   : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(sh.name)}`;
 
+/* インスタ・TikTok は「店のページ」という概念が無いため、店名での検索を開く。
+   スマホではアプリが起動する。投稿の多い店ほどよく当たる */
+const instaUrl  = sh => `https://www.instagram.com/explore/tags/${encodeURIComponent(String(sh.name||'').replace(/[\s　#＃]/g,''))}/`;
+const tiktokUrl = sh => `https://www.tiktok.com/search?q=${encodeURIComponent(sh.name||'')}`;
+
 /** 食べログのリンク。店ページのURLが登録してあれば直接、
     無ければ 店名＋エリア（住所から抽出）で食べログ内を検索する */
 function tabelogUrl(sh){

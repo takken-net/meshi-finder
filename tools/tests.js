@@ -274,12 +274,22 @@ eq('店ページのURLが登録済みなら直行',
    tabelogUrl(newShop({ name:'X', tabelog:'https://tabelog.com/tokyo/A1304/A130401/13000001/' })),
    'https://tabelog.com/tokyo/A1304/A130401/13000001/');
 
+/* インスタ・TikTok のリンク */
+const sns = newShop({ name:'麺屋 こうじ' });
+ok('インスタはハッシュタグ検索',   instaUrl(sns).startsWith('https://www.instagram.com/explore/tags/'));
+ok('ハッシュタグから空白を除く',   instaUrl(sns).includes(encodeURIComponent('麺屋こうじ')));
+ok('TikTok は店名検索',            tiktokUrl(sns).startsWith('https://www.tiktok.com/search?q='));
+ok('TikTok に店名が入る',          tiktokUrl(sns).includes(encodeURIComponent('麺屋 こうじ')));
+
 /* 店の詳細のリンクはタグ表示 */
 SEL.shop = withPos.id; SEL.edit = false;
 const dhtml = VIEWS.shops();
 ok('詳細のリンクがタグ型で出る', dhtml.includes('tag lnk'));
 ok('食べログのリンクが出る',     dhtml.includes('食べログ'));
 ok('経路のリンクが出る',         dhtml.includes('経路'));
+ok('インスタのリンクが出る',     dhtml.includes('インスタ'));
+ok('TikTok のリンクが出る',      dhtml.includes('TikTok'));
+ok('経路が Googleマップより先',  dhtml.indexOf('🚶 経路') < dhtml.indexOf('🗺 Googleマップ'));
 ok('評価の表記は My評価',        dhtml.includes('My評価') && !dhtml.includes('自分の評価'));
 SEL.shop = null;
 
