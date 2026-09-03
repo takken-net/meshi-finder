@@ -1281,6 +1281,14 @@ ok('キーが無いと伝える',       QMSG.includes('APIキー'));
 DB = seed(); migrate();
 IMP = null; QMSG = '';
 noThrow('取込画面（キー未設定）', () => VIEWS.data());
+
+/* バックアップを別端末で復元した直後（座標入りの店はあるがキーが無い）でも、
+   駅が未確認であることが分かるように伝える。ボタン自体はキーが要るので出さない */
+putShop(newShop({ name:'座標入り', lat:1, lng:1, stationChecked:false }));
+ok('キー未設定でも駅の未確認件数を伝える', VIEWS.data().includes('最寄り駅が未確認の店も'));
+ok('キー未設定ではボタンは出さない', !VIEWS.data().includes('まとめてキューに追加する'));
+DB = seed(); migrate();
+
 DB.settings.apiKey = 'TEST-KEY';
 DB.queue = [putShop(newShop({ name:'待ち店' })).id];
 noThrow('取込画面（キューあり）', () => VIEWS.data());

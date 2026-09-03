@@ -315,9 +315,14 @@ function onQueueStationBackfill(){
 function queuePanelHTML(pend, backlog){
   if(!pend && !queueLeft() && !backlog) return '<p class="mini">未取得の店はありません。</p>';
 
+  /* キーはこの端末の中だけに保存されます。バックアップを別の端末で復元した直後は、
+     位置がすでに入っている店でもここではまだ何も分かりません（キーが無いため）。
+     「まとめてキューに追加する」ボタンはキーが要る操作なので、ここでは出さず、
+     文章の中で存在だけ伝えます */
   if(!DB.settings.apiKey) return `<div class="note warn">
-    位置が未取得の店が ${fmt(pend)} 軒あります。<br>
-    自動で埋めるには<a onclick="go('set')">設定タブ</a>で Google の APIキーを入れてください。
+    位置が未取得の店が ${fmt(pend)} 軒あります${backlog ? `<br>（ほか、最寄り駅が未確認の店も ${fmt(backlog)} 軒）` : ''}。<br>
+    自動で埋めるには<a onclick="go('set')">設定タブ</a>で Google の APIキーを入れてください
+    （この端末でまだ入れていなければ、他の端末で使っているのと同じキーを貼れば動きます）。
     <span class="mini">キーが無くても、お店タブで1軒ずつ手入力できます。</span></div>`;
 
   const days = Math.ceil(queueLeft() / Math.max(1, num(DB.settings.dailyLimit)));
