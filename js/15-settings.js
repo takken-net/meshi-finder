@@ -47,6 +47,13 @@ VIEWS.set = () => `
       ? '取得しています。この項目は上位の料金帯（無料枠 月1,000回ほど）になります。'
       : '取得していません。安いほうの帯（無料枠 月5,000回ほど）で動いています。営業中かどうかの判定はできません。'}</p>
 
+    <label class="sw mt"><input type="checkbox" ${DB.settings.fetchStation?'checked':''}
+      onchange="DB.settings.fetchStation=this.checked; save(); render(); toast('保存しました')">
+      <span>最寄り駅も調べる</span></label>
+    <p class="mini">結果に「〇〇駅 徒歩◯分」を表示します。
+      店の検索（Text Search）とは別のAPI（Nearby Search）を1回使いますが、
+      無料枠も別枠（月5,000回ほど）なので、店の検索の枠を減らしません。</p>
+
     <label class="lbl">1日に叩く上限<span class="mini">（暴走を止めるための自主規制）</span></label>
     <div class="row gap">
       <input id="api-limit" class="fld sm" type="number" min="1" max="5000"

@@ -129,8 +129,8 @@ async function saveShared(){
 
   SHARE = null; SEL.sub = '';
 
-  /* 位置が無ければ、その場で取りにいく。取れなければキューに積んでおく */
-  if(target.lat == null){
+  /* 位置や最寄り駅がまだなら、その場で取りにいく。取れなければキューに積んでおく */
+  if(needsFetch(target)){
     if(!DB.queue.includes(target.id)) DB.queue.push(target.id);
     save(); render();
     if(DB.settings.apiKey && quotaLeft() > 0){

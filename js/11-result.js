@@ -57,6 +57,7 @@ function shopCardHTML(r){
       <b>${s.fav?'📌 ':''}${esc(s.name)}</b>
       <span class="dist">${distLabel(r.dist)}</span>
     </div>
+    ${stationLabel(s) ? `<p class="mini station">🚉 ${esc(stationLabel(s))}</p>` : ''}
     <div class="tags">
       ${openBadge(s)}
       ${genreTags(s.genres)}

@@ -138,15 +138,21 @@ https://takken-net.github.io/*
 
 **課金事故を防ぐための取り決めです。勝手に緩めないでください。**
 
-1. **API を叩くのは `js/04-places.js` の1関数だけ。** 呼び出し箇所を増やさない
+1. **API を叩くのは `js/07-places.js` の中だけ。** 呼び出し箇所を増やさない
 2. **フィールドマスクを増やすときは SKU 帯が上がらないか必ず確認する。**
    営業時間・評価は Enterprise 帯（無料枠が月1,000回程度）、
    座標・ジャンルまでは Pro 帯（月5,000回）。`settings.fetchHours` で切り替えられるようにしてある
 3. **APIキーはリポジトリに絶対にコミットしない。** `DB.settings.apiKey` にのみ存在する
    （HTTPリファラ制限はブラウザ経由しか防げず、`curl` では偽装できるため、キーを外に出さないことが本質）
 4. **自動リトライループを作らない。** 失敗はデータに記録し、人間が再開ボタンを押す
-5. **1店につき1回だけ叩く。** `placeId` が入っている店は二度と叩かない
+5. **1店につき1回だけ叩く（リクエストの種類ごとに）。**
+   `placeId`／`lat`が入っている店の本体は二度と叩かない。`stationChecked` が立っている店の
+   最寄り駅も同様（見つからなかった場合も含めて「調べた」印を立てる。でなければ毎回叩き直してしまう）
 6. `openNow` は使わない。取得時点のスナップショットなので、保存すると永久に固定される
+7. **最寄り駅の検索（Nearby Search）は本体検索（Text Search）とは別のリクエスト種別。**
+   無料枠も別枠（Pro帯・月5,000回ほど）なので、`settings.fetchStation` を切っても
+   本体検索の枠には影響しない。逆に、座標だけある店（Takeout の `@lat,lng` など）に対しては
+   **本体検索をやり直さず、駅の検索だけ**を行う（`resolveShop` が `sh.lat` の有無で分岐する）
 
 ---
 
@@ -262,6 +268,7 @@ DB = {
     placeId, lat, lng, addr, types:[], primaryType, typeJa,
     hours,              // {always, ranges:[{s,e}], text:[]} / 未取得は null
     utcOffset, bizStatus, gRating, gCount, priceLevel, mapsUri, fetchedAt,
+    station, stationDist, stationChecked,   // 最寄り駅（Nearby Search で別途取得。§Places API の決まり7）
     // ユーザー資産（絶対に上書きしない）
     genres:[], genresManual, tags:[], myRate, memo, fav,
     lists:[],           // 取り込み元のリスト名／アカウント。ここだけは「足し算」で増やす

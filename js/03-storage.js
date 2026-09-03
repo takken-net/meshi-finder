@@ -17,6 +17,7 @@ function seed(){
     settings: {
       apiKey: '',              // Places API キー（リポジトリには絶対に置かない）
       fetchHours: true,        // 営業時間も取得するか（false なら安いSKU帯に落ちる）
+      fetchStation: true,      // 最寄り駅も調べるか（Nearby Search。別のSKU・別の無料枠を使う）
       dailyLimit: 100,         // アプリ側の自主上限（暴走を止める最後の砦）
       usage: { date: today(), n: 0 },
       places: [],              // よく使う地点（現在地が取れないときの代わり）
@@ -37,6 +38,7 @@ function newShop(o){
     types: [], primaryType: '', typeJa: '',
     hours: null, utcOffset: 540, bizStatus: '',
     gRating: 0, gCount: 0, priceLevel: '', mapsUri: '', fetchedAt: '',
+    station: '', stationDist: null, stationChecked: false,   // 最寄り駅（Nearby Search で別途取得）
     /* --- ユーザー資産（Places の再取得・CSV再取込で絶対に上書きしない） --- */
     genres: [], genresManual: false, tags: [], myRate: 0, memo: '', fav: false,
     lists: [],                 // 取り込み元のリスト名／アカウント（複数に属せる）
@@ -69,6 +71,7 @@ function migrate(){
   const s = DB.settings;
   if(s.apiKey      == null) s.apiKey = '';
   if(s.fetchHours  == null) s.fetchHours = true;
+  if(s.fetchStation== null) s.fetchStation = true;
   if(s.dailyLimit  == null) s.dailyLimit = 100;
   if(s.usage       == null) s.usage = { date: today(), n: 0 };
   if(s.places      == null) s.places = [];

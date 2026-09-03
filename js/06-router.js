@@ -88,6 +88,13 @@ const routeUrl = sh => sh.lat != null
 const instaUrl  = sh => `https://www.instagram.com/explore/tags/${encodeURIComponent(String(sh.name||'').replace(/[\s　#＃]/g,''))}/`;
 const tiktokUrl = sh => `https://www.tiktok.com/search?q=${encodeURIComponent(sh.name||'')}`;
 
+/** 最寄り駅の表示。「渋谷駅 徒歩8分」の形。駅が無い・未確認なら空文字 */
+function stationLabel(sh){
+  if(!sh || !sh.station) return '';
+  const w = walkMin(sh.stationDist);
+  return w != null ? `${sh.station} 徒歩${w}分` : sh.station;
+}
+
 /** 食べログのリンク。店ページのURLが登録してあれば直接、
     無ければ 店名＋エリア（住所から抽出）で食べログ内を検索する */
 function tabelogUrl(sh){

@@ -699,7 +699,9 @@ eq('座標が入った店がある', DB.shops.filter(s => s.lat != null).length,
 eq('メモが入る',      DB.shops.find(s => s.name === '麺屋こうじ').memo, 'つけ麺がうまい');
 eq('Comment もメモに入る', DB.shops.find(s => s.name === '鮨たなか').memo, 'また行く');
 eq('ジャンルが自動で付く', DB.shops.find(s => s.name === '麺屋こうじ').genres.join(','), 'ramen');
-eq('位置が無い店はキューに積まれる', DB.queue.length, 2);
+eq('位置が無い店・最寄り駅が未確認の店はキューに積まれる', DB.queue.length, 3);
+ok('座標入りの店も最寄り駅のために積まれる',
+   DB.queue.includes(DB.shops.find(s => s.name === '麺屋こうじ').id));
 eq('取り込み後は確認画面が閉じる', IMP, null);
 
 /* 自分で評価・タグ・メモを付けてから、同じCSVをもう一度読む */
@@ -715,7 +717,7 @@ const koji2 = DB.shops.find(s => s.name === '麺屋こうじ');
 eq('再取込でも評価は残る', koji2.myRate, 5);
 eq('再取込でもタグは残る', koji2.tags.join(','), '一人向き');
 eq('再取込でもメモは上書きされない', koji2.memo, '書き換えた私のメモ');
-eq('キューは二重に積まれない', DB.queue.length, 2);
+eq('キューは二重に積まれない', DB.queue.length, 3);
 
 /* 同じ CSV の中に同じ店が2回出てきても1軒にまとまる */
 DB = seed(); migrate();
@@ -790,8 +792,8 @@ const star1 = DB.shops.find(s => s.name === '麺屋こうじ');
 near('座標がそのまま入る',   star1.lat, 35.6812, 0.0001);
 eq('リスト名が付く',        star1.lists.join(','), 'スター付き');
 eq('cid が重複キーになる',  star1.srcId, 'cid:555');
-eq('座標入りはキューに積まれない', DB.queue.includes(star1.id), false);
-eq('座標なしはキューに積まれる',   DB.queue.length, 1);
+ok('座標入りの店も最寄り駅のためにキューへ積まれる', DB.queue.includes(star1.id));
+eq('座標なしの店も含めて2軒がキューに積まれる',      DB.queue.length, 2);
 
 /* CSV 側（保存済み）と JSON 側（スター）に同じ店がいても合流する */
 importCSV('Title,URL\n麺屋こうじ,http://maps.google.com/?cid=555\n', 'お気に入りの場所');
@@ -990,8 +992,9 @@ ok('営業時間を切ると送るマスクからも消える',
    !FETCH_LOG[0].init.headers['X-Goog-FieldMask'].includes('regularOpeningHours'));
 DB.settings.fetchHours = true;
 
-/* place_id が分かっていれば詳細を直接取りにいく（候補が出ないので確実） */
-DB = seed(); migrate(); DB.settings.apiKey = 'TEST-KEY';
+/* place_id が分かっていれば詳細を直接取りにいく（候補が出ないので確実）。
+   最寄り駅の検索は別の項で確かめるので、ここでは切っておく */
+DB = seed(); migrate(); DB.settings.apiKey = 'TEST-KEY'; DB.settings.fetchStation = false;
 const known = putShop(newShop({ name:'既知の店', placeId:'ChIJ_KNOWN' }));
 plan({ body: PJ({ id:'ChIJ_KNOWN' }) });
 eq('詳細取得で解決する', await resolveShop(known), 'ok');
@@ -1015,6 +1018,195 @@ eq('選んだ候補で確定する',     shopOf(amb.id).placeId, 'B');
 eq('確定すると ok になる',     shopOf(amb.id).status, 'ok');
 eq('確定すると候補は消える',   shopOf(amb.id).cands, null);
 
+/* ============================================================
+   24a. 最寄り駅（Nearby Search）
+
+   店の検索（Text Search）とは別のリクエストです。
+   「座標がすでにある店では、最寄り駅の検索だけを行い、
+   店そのものの検索はやり直さない」という節約が一番間違えやすいので、
+   resolveShop() と runQueue() の両方から確かめます。
+   ============================================================ */
+section('最寄り駅');
+
+/** 駅のレスポンス見本（Nearby Search も Text Search と同じ Place 形） */
+const ST = o => Object.assign({
+  id: 'ChIJ_SHIBUYA', displayName: { text: '渋谷駅' },
+  location: { latitude: 35.6580, longitude: 139.7016 },
+}, o || {});
+
+DB = seed(); migrate(); DB.settings.apiKey = 'TEST-KEY';
+
+/* --- 送信内容 --- */
+plan({ body:{ places:[ST()] } });
+await searchNearbyStation({ lat:35.6812, lng:139.7671 });
+const sreq = FETCH_LOG[0];
+ok('周辺検索の宛先が正しい', sreq.url.startsWith('https://places.googleapis.com/v1/places:searchNearby'));
+eq('POST で送る',           sreq.init.method, 'POST');
+const sbody = JSON.parse(sreq.init.body);
+ok('駅・地下鉄・軽量鉄道を対象にする',
+   ['train_station','subway_station','light_rail_station'].every(t => sbody.includedTypes.includes(t)));
+eq('近い順に1件だけ',        sbody.maxResultCount, 1);
+eq('距離優先で並べる',        sbody.rankPreference, 'DISTANCE');
+ok('店の周辺だけに絞る',      !!sbody.locationRestriction.circle);
+eq('マスクは最小限（Proのまま）', sreq.init.headers['X-Goog-FieldMask'], 'places.id,places.displayName,places.location');
+eq('こちらも使用回数を1増やす', DB.settings.usage.n, 1);
+
+/* --- applyStation --- */
+const stSh = putShop(newShop({ name:'テスト店', lat:35.6812, lng:139.7671 }));
+applyStation(stSh, [ST()]);
+eq('駅名が入る',        stSh.station, '渋谷駅');
+ok('距離が入る',         stSh.stationDist > 0);
+eq('確認済みになる',     stSh.stationChecked, true);
+
+const stSh2 = putShop(newShop({ name:'駅無し店', lat:35.6812, lng:139.7671 }));
+applyStation(stSh2, []);
+eq('見つからなくても確認済みにする（毎回叩き直さないため）', stSh2.stationChecked, true);
+eq('駅名は空のまま', stSh2.station, '');
+eq('距離も空のまま', stSh2.stationDist, null);
+
+/* --- needsFetch: キューに積む必要があるかの判定 --- */
+eq('位置が無ければ積む必要あり',
+   needsFetch(newShop({})), true);
+eq('位置はあるが駅が未確認なら積む必要あり',
+   needsFetch(newShop({ lat:1, lng:1, stationChecked:false })), true);
+eq('位置があり駅も確認済みなら不要',
+   needsFetch(newShop({ lat:1, lng:1, stationChecked:true })), false);
+DB.settings.fetchStation = false;
+eq('駅を調べない設定なら、位置さえあれば不要',
+   needsFetch(newShop({ lat:1, lng:1, stationChecked:false })), false);
+DB.settings.fetchStation = true;
+eq('店が無くても落ちない', needsFetch(null), false);
+
+/* --- resolveShop に組み込まれていること --- */
+
+/* ① 位置が無い店：本体検索＋駅検索の2回 */
+DB = seed(); migrate(); DB.settings.apiKey = 'TEST-KEY';
+const newSh = putShop(newShop({ name:'麺屋こうじ' }));
+plan({ body:{ places:[PJ()] } }, { body:{ places:[ST()] } });
+eq('通常どおり ok になる', await resolveShop(newSh), 'ok');
+eq('本体と駅で2回叩く',    FETCH_LOG.length, 2);
+eq('店の位置も入る',       newSh.lat, 35.6812);
+eq('駅も入る',             newSh.station, '渋谷駅');
+
+/* ② place_id が分かっている店：詳細取得＋駅検索の2回 */
+DB = seed(); migrate(); DB.settings.apiKey = 'TEST-KEY';
+const knownSh = putShop(newShop({ name:'既知の店', placeId:'ChIJ_KNOWN' }));
+plan({ body: PJ({ id:'ChIJ_KNOWN' }) }, { body:{ places:[ST()] } });
+await resolveShop(knownSh);
+eq('詳細取得と駅で2回叩く', FETCH_LOG.length, 2);
+eq('駅も入る',              knownSh.station, '渋谷駅');
+
+/* ③ 座標はすでにある店（Takeout の @lat,lng など）：駅検索だけの1回。
+      ここが一番間違えやすい ―― 店の検索をやり直してはいけない */
+DB = seed(); migrate(); DB.settings.apiKey = 'TEST-KEY';
+const posSh = putShop(newShop({ name:'座標だけある店', lat:35.6812, lng:139.7671 }));
+plan({ body:{ places:[ST()] } });
+eq('ok になる',              await resolveShop(posSh), 'ok');
+eq('駅の検索1回だけ',        FETCH_LOG.length, 1);
+ok('店の検索はしていない',   !FETCH_LOG[0].url.includes('searchText'));
+ok('駅の検索をしている',     FETCH_LOG[0].url.includes('searchNearby'));
+eq('駅が入る',                posSh.station, '渋谷駅');
+
+/* ④ すでに確認済みの店：resolveShop を呼んでも何もしない */
+const doneSh = putShop(newShop({ name:'済み店', lat:35.6812, lng:139.7671,
+                                 stationChecked:true }));
+FETCH_LOG = [];
+eq('確認済みなら ok を即返す', await resolveShop(doneSh), 'ok');
+eq('何も叩かない',             FETCH_LOG.length, 0);
+
+/* ⑤ 駅を調べない設定なら、位置が無い店でも本体検索の1回だけ */
+DB.settings.fetchStation = false;
+const offSh = putShop(newShop({ name:'設定オフの店' }));
+plan({ body:{ places:[PJ({ id:'ChIJ_OFF' })] } });
+await resolveShop(offSh);
+eq('本体検索の1回だけ',       FETCH_LOG.length, 1);
+eq('駅は調べない',            offSh.station, '');
+eq('確認済みにもしない',      offSh.stationChecked, false);
+DB.settings.fetchStation = true;
+
+/* --- queueStationBackfill: 位置はあるが駅が未確認の店をまとめて積む --- */
+DB = seed(); migrate();
+FETCH_LOG = [];   // 前の項の呼び出し分をリセット（ここでは通信していないことを確かめるため）
+const bf1 = putShop(newShop({ name:'A', lat:1, lng:1, stationChecked:false }));
+const bf2 = putShop(newShop({ name:'B', lat:1, lng:1, stationChecked:true }));   // 確認済み→対象外
+const bf3 = putShop(newShop({ name:'C' }));                                      // 位置が無い→対象外
+const bf4 = putShop(newShop({ name:'D', lat:1, lng:1, stationChecked:false }));
+DB.queue = [bf4.id];                                                             // すでに積まれている分は数えない
+eq('対象の軒数を返す',      queueStationBackfill(), 1);
+ok('未確認の店だけ積む',    DB.queue.includes(bf1.id));
+ok('確認済みの店は積まない', !DB.queue.includes(bf2.id));
+ok('位置が無い店は積まない', !DB.queue.includes(bf3.id));
+eq('すでに積まれた分は増えない', DB.queue.filter(id => id === bf4.id).length, 1);
+eq('通信はしない（キューに積むだけ）', FETCH_LOG.length, 0);
+eq('積む対象が無ければ0',   queueStationBackfill(), 0);
+
+/* --- runQueue にも組み込まれていること --- */
+DB = seed(); migrate(); DB.settings.apiKey = 'TEST-KEY'; DB.settings.dailyLimit = 100;
+const rqSh = putShop(newShop({ name:'座標だけある店', lat:35.6812, lng:139.7671 }));
+DB.queue = [rqSh.id];
+plan({ body:{ places:[ST()] } });
+await runQueue();
+eq('キュー経由でも駅だけ1回で取得する', FETCH_LOG.length, 1);
+eq('駅が入る',                          shopOf(rqSh.id).station, '渋谷駅');
+eq('キューから外れる',                  DB.queue.length, 0);
+
+/* 完全に済んでいる店はキューにあっても叩かずスキップする */
+const skipSh = putShop(newShop({ name:'済み店2', lat:35.6812, lng:139.7671, stationChecked:true }));
+DB.queue = [skipSh.id];
+FETCH_LOG = [];
+await runQueue();
+eq('確認済みならキューにあっても叩かない', FETCH_LOG.length, 0);
+eq('それでもキューからは外れる',           DB.queue.length, 0);
+
+/* --- 画面（取込タブ）--- */
+DB = seed(); migrate(); DB.settings.apiKey = 'TEST-KEY';
+putShop(newShop({ name:'A', lat:1, lng:1, stationChecked:false }));
+putShop(newShop({ name:'B', lat:1, lng:1, stationChecked:false }));
+eq('未確認の軒数を数える', stationBacklogCount(), 2);
+ok('取込画面に案内が出る', VIEWS.data().includes('最寄り駅が未確認'));
+ok('まとめて追加ボタンが出る', VIEWS.data().includes('まとめてキューに追加する'));
+onQueueStationBackfill();
+eq('押すとキューに積まれる', DB.queue.length, 2);
+eq('積んだ後は未確認の残数が減る', stationBacklogCount(), 0);
+DB.settings.fetchStation = false;
+eq('設定を切れば案内も出ない', stationBacklogCount(), 0);
+ok('取込画面の案内も消える', !VIEWS.data().includes('最寄り駅が未確認'));
+DB.settings.fetchStation = true;
+
+/* --- 設定画面 ---（その項目のチェックボックスだけを見るよう、ラベル直前だけを調べる。
+   onchange ハンドラの中に "this.checked" という文字列があるので、
+   単に "checked" を探すと誤検出する。属性としての checked だけを見る） */
+DB.settings.fetchStation = true;
+let stHtml = VIEWS.set(), stIdx = stHtml.indexOf('最寄り駅も調べる');
+ok('設定に最寄り駅のチェックがある', stIdx !== -1);
+ok('ONならチェックが入る',
+   stHtml.slice(Math.max(0, stIdx-200), stIdx).includes('type="checkbox" checked'));
+
+DB.settings.fetchStation = false;
+stHtml = VIEWS.set(); stIdx = stHtml.indexOf('最寄り駅も調べる');
+ok('OFFならチェックが外れる',
+   !stHtml.slice(Math.max(0, stIdx-200), stIdx).includes('type="checkbox" checked'));
+DB.settings.fetchStation = true;
+
+/* --- 表示（結果カード・店の詳細）--- */
+DB = seed(); migrate();
+eq('駅と徒歩分を組み立てる', stationLabel({ station:'渋谷駅', stationDist:650 }), '渋谷駅 徒歩8分');
+eq('距離が無ければ駅名だけ', stationLabel({ station:'渋谷駅', stationDist:null }), '渋谷駅');
+eq('駅が無ければ空文字',     stationLabel({ station:'' }), '');
+eq('店が無くても落ちない',   stationLabel(null), '');
+
+Q = { genres:[], kw:'', openOnly:false, radius:0, rate:0 };
+POS = null; PICK = null; SEL.sub = '';
+putShop(newShop({ name:'麺屋こうじ', lat:35.6820, lng:139.7680,
+                  station:'渋谷駅', stationDist:650 }));
+ok('結果カードに最寄り駅が出る', resultListHTML().includes('渋谷駅') && resultListHTML().includes('徒歩'));
+
+const dsh = DB.shops[0];
+SEL.shop = dsh.id; SEL.edit = false;
+ok('店の詳細にも最寄り駅が出る', VIEWS.shops().includes('最寄り駅') && VIEWS.shops().includes('渋谷駅'));
+SEL.shop = null;
+DB = seed(); migrate();
+
 /* --- 使用回数と上限 --- */
 DB = seed(); migrate(); DB.settings.apiKey = 'TEST-KEY';
 DB.settings.dailyLimit = 3;
@@ -1024,8 +1216,9 @@ eq('使うと減る',           quotaLeft(), 1);
 DB.settings.usage = { date:'2020-01-01', n: 999 };
 eq('日付が変われば戻る',   quotaLeft(), 3);
 
-/* --- キュー処理 --- */
+/* --- キュー処理 ---（最寄り駅の検索は別の項で確かめるので、ここでは切っておく） */
 DB = seed(); migrate(); DB.settings.apiKey = 'TEST-KEY'; DB.settings.dailyLimit = 100;
+DB.settings.fetchStation = false;
 const q1 = putShop(newShop({ name:'A店' }));
 const q2 = putShop(newShop({ name:'B店' }));
 DB.queue = [q1.id, q2.id];

@@ -119,6 +119,7 @@ function shopDetailHTML(){
       <div><span>My評価</span>${starPicker(s.myRate, 'rateShop')}</div>
       ${s.gRating ? `<div><span>Google</span>★${fmt1(s.gRating)}（${fmt(s.gCount)}件）</div>` : ''}
       ${s.addr    ? `<div><span>住所</span>${esc(s.addr)}</div>` : ''}
+      ${stationLabel(s) ? `<div><span>最寄り駅</span>🚉 ${esc(stationLabel(s))}</div>` : ''}
       <div><span>位置</span>${s.lat!=null ? `${fmt1(s.lat)}, ${fmt1(s.lng)}`
                                           : '<span class="na">未取得</span>'}</div>
       ${s.typeJa  ? `<div><span>種別</span>${esc(s.typeJa)}</div>` : ''}

@@ -294,15 +294,26 @@ function importStartHTML(){
         同じようにここへ読み込めば合流します。同じ店は重複しません。</p>` : ''}
 
     <h3 class="mt2">位置情報の取得</h3>
-    ${queuePanelHTML(pend)}
+    ${queuePanelHTML(pend, stationBacklogCount())}
 
     ${ambiguousPanelHTML()}
   </div>`;
 }
 
-/** 位置が未取得の店をまとめて片づけるパネル */
-function queuePanelHTML(pend){
-  if(!pend && !queueLeft()) return '<p class="mini">未取得の店はありません。</p>';
+/** 位置はあるが最寄り駅がまだ確認できていない店の数（この機能を足す前からいた店など） */
+function stationBacklogCount(){
+  if(!DB.settings.fetchStation) return 0;
+  return DB.shops.filter(s => s.lat != null && !s.stationChecked && !DB.queue.includes(s.id)).length;
+}
+function onQueueStationBackfill(){
+  const n = queueStationBackfill();
+  render();
+  toast(n ? `${fmt(n)} 軒をキューに追加しました` : '追加する店がありません');
+}
+
+/** 位置（と最寄り駅）が未取得の店をまとめて片づけるパネル */
+function queuePanelHTML(pend, backlog){
+  if(!pend && !queueLeft() && !backlog) return '<p class="mini">未取得の店はありません。</p>';
 
   if(!DB.settings.apiKey) return `<div class="note warn">
     位置が未取得の店が ${fmt(pend)} 軒あります。<br>
@@ -311,6 +322,10 @@ function queuePanelHTML(pend){
 
   const days = Math.ceil(queueLeft() / Math.max(1, num(DB.settings.dailyLimit)));
   return `
+    ${backlog ? `<div class="note mb">
+      最寄り駅が未確認の店が ${fmt(backlog)} 軒あります（この機能を追加する前に登録した店など）。
+      <div class="mt"><button onclick="onQueueStationBackfill()">まとめてキューに追加する</button></div>
+    </div>` : ''}
     <div class="note">
       <div id="qprog">${queueProgressHTML()}</div>
       ${QMSG ? `<p class="mini warnmsg">${esc(QMSG).replace(/\n/g,'<br>')}</p>` : ''}
@@ -522,12 +537,12 @@ function runImport(){
     /* すでにある店、または「まとめる」を選んだ要確認は、既存に重ねる */
     if(dup && (it.state === 'exist' || (it.state === 'check' && it.merge))){
       mergeShop(dup, it.cand);
-      if(dup.lat == null && !DB.queue.includes(dup.id)) DB.queue.push(dup.id);
+      if(needsFetch(dup) && !DB.queue.includes(dup.id)) DB.queue.push(dup.id);
       merged++;
       continue;
     }
     putShop(it.cand);
-    if(it.cand.lat == null && !DB.queue.includes(it.cand.id)) DB.queue.push(it.cand.id);
+    if(needsFetch(it.cand) && !DB.queue.includes(it.cand.id)) DB.queue.push(it.cand.id);
     added++;
   }
 

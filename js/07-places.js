@@ -18,9 +18,16 @@
      Pro        … 座標・住所・カテゴリまで        無料枠 月5,000回ほど
      Enterprise … 上記＋営業時間・評価・価格帯    無料枠 月1,000回ほど
      settings.fetchHours を false にすると Pro 帯に落とせます
+
+     最寄り駅の検索（Nearby Search）は上記とは**別のリクエスト種別**で、
+     無料枠も別枠（Pro帯・月5,000回ほど）です。店の検索とは食い合いません。
+     settings.fetchStation を false にすると呼ばなくなります。
    ============================================================ */
 const PLACES_SEARCH = 'https://places.googleapis.com/v1/places:searchText';
 const PLACES_DETAIL = 'https://places.googleapis.com/v1/places/';
+const PLACES_NEARBY = 'https://places.googleapis.com/v1/places:searchNearby';
+const STATION_RADIUS = 2000;      // メートル。徒歩30分弱を目安にした探索範囲
+const MASK_STATION = ['places.id','places.displayName','places.location'].join(',');
 
 /* 取得する項目。増やすと料金の帯が上がることがあります */
 const MASK_PRO = [
@@ -163,6 +170,59 @@ function applyPlace(sh, np){
   return sh;
 }
 
+/** 店の近くの駅を1件だけ探す（Nearby Search。テキスト検索とは別のSKU・別の無料枠） */
+async function searchNearbyStation(pos){
+  const e = needKey(); if(e) throw e;
+  bumpUsage();
+  const j = await callPlaces(PLACES_NEARBY, {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json',
+               'X-Goog-Api-Key': DB.settings.apiKey,
+               'X-Goog-FieldMask': MASK_STATION },
+    body: JSON.stringify({
+      languageCode: 'ja', regionCode: 'JP', maxResultCount: 1,
+      rankPreference: 'DISTANCE',
+      includedTypes: ['train_station','subway_station','light_rail_station'],
+      locationRestriction: { circle: {
+        center: { latitude: num(pos.lat), longitude: num(pos.lng) }, radius: STATION_RADIUS } },
+    }),
+  });
+  return (j && j.places) || [];
+}
+
+/** 最寄り駅の検索結果を店に反映する。
+    見つからなくても stationChecked は立てる（毎回叩き直さないようにするため） */
+function applyStation(sh, places){
+  const np = (places && places[0]) ? normPlace(places[0]) : null;
+  if(np && np.lat != null){ sh.station = np.name; sh.stationDist = haversine(sh, np); }
+  else{ sh.station = ''; sh.stationDist = null; }
+  sh.stationChecked = true;
+  delete sh._hay;
+}
+
+/** 店の最寄り駅だけを取りにいく（座標はすでに分かっている前提） */
+async function resolveStation(sh){
+  if(sh.lat == null) return;
+  applyStation(sh, await searchNearbyStation(sh));
+}
+
+/** この店をキューに積む必要があるか（位置が無い、または最寄り駅を調べ切れていない） */
+function needsFetch(sh){
+  if(!sh) return false;
+  if(sh.lat == null) return true;
+  return !!(DB.settings.fetchStation && !sh.stationChecked);
+}
+
+/** 位置はすでにある（が最寄り駅は未確認の）店を、まとめてキューに積む。
+    API はまだ叩かない（実際に叩くのは「まとめて取得する」を押したとき） */
+function queueStationBackfill(){
+  let n = 0;
+  for(const sh of DB.shops)
+    if(sh.lat != null && !sh.stationChecked && !DB.queue.includes(sh.id)){ DB.queue.push(sh.id); n++; }
+  if(n) save();
+  return n;
+}
+
 /** 候補から1つに決められるか判断する。決められなければ候補を返して人に選んでもらう */
 function pickCandidate(name, places){
   const list = (places || []).map(normPlace).filter(Boolean);
@@ -182,21 +242,32 @@ function pickCandidate(name, places){
   return { pick: null, cands: list.slice(0, 3) };
 }
 
-/** 1軒を解決する。'ok' | 'ambiguous' | 'failed' を返す */
+/** 1軒を解決する。'ok' | 'ambiguous' | 'failed' を返す。
+
+    座標がまだ無い店だけ本体（店名・カテゴリ・営業時間など）を調べます。
+    Takeout の URL から座標だけ拾えていた店のように、座標はあるが
+    最寄り駅がまだの店は、この本体検索を飛ばして駅の検索だけ行います
+    （「1店につき1回だけ」を守るため、済んでいる分は叩き直しません）。 */
 async function resolveShop(sh){
-  if(sh.placeId){
-    applyPlace(sh, normPlace(await getPlaceDetails(sh.placeId)));
-    return 'ok';
+  if(sh.lat == null){
+    if(sh.placeId){
+      applyPlace(sh, normPlace(await getPlaceDetails(sh.placeId)));
+    }else{
+      const places = await searchPlace(sh.name, sh.addr, POS || DB.settings.lastPos);
+      if(!places.length){
+        sh.status = 'failed'; sh.err = 'ZERO_RESULTS'; sh.updatedAt = today();
+        return 'failed';
+      }
+      const { pick, cands } = pickCandidate(sh.name, places);
+      if(!pick){
+        sh.status = 'ambiguous'; sh.cands = cands; sh.updatedAt = today();
+        return 'ambiguous';
+      }
+      applyPlace(sh, pick);
+    }
   }
-  const places = await searchPlace(sh.name, sh.addr, POS || DB.settings.lastPos);
-  if(!places.length){
-    sh.status = 'failed'; sh.err = 'ZERO_RESULTS'; sh.updatedAt = today();
-    return 'failed';
-  }
-  const { pick, cands } = pickCandidate(sh.name, places);
-  if(pick){ applyPlace(sh, pick); return 'ok'; }
-  sh.status = 'ambiguous'; sh.cands = cands; sh.updatedAt = today();
-  return 'ambiguous';
+  if(sh.lat != null && DB.settings.fetchStation && !sh.stationChecked) await resolveStation(sh);
+  return 'ok';
 }
 
 /* ------------------------------------------------------------
@@ -233,7 +304,7 @@ async function runQueue(){
     const id = DB.queue[0];
     const sh = shopOf(id);
     if(!sh){ DB.queue.shift(); continue; }
-    if(sh.lat != null && sh.placeId){ DB.queue.shift(); continue; }   // すでに済んでいる
+    if(!needsFetch(sh)){ DB.queue.shift(); continue; }   // すでに済んでいる（駅も含めて）
 
     try{
       const r = await resolveShop(sh);
