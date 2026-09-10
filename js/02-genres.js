@@ -17,8 +17,12 @@ const GENRES = [
     words:['寿司','鮨','すし','海鮮','魚','刺身'] },
 
   { id:'izakaya', label:'居酒屋', icon:'🍺',
-    types:['bar','pub','bar_and_grill','wine_bar'],
-    words:['居酒屋','酒場','串','おでん','立ち飲み','角打ち','ビール','日本酒','バル','バー'] },
+    types:[],   // Places に「居酒屋」専用の種別が無いため、店名などの言葉だけで判定する
+    words:['居酒屋','酒場','串','おでん','立ち飲み','角打ち','ビール','日本酒'] },
+
+  { id:'bar', label:'BAR', icon:'🍸',
+    types:['bar','pub','bar_and_grill','wine_bar','night_club'],
+    words:['バー','バル','カクテル','ウイスキー','ワインバー','スナック','bar'] },
 
   { id:'washoku', label:'和食', icon:'🍱',
     types:['japanese_restaurant','tonkatsu_restaurant','udon_restaurant',

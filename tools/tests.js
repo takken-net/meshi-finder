@@ -122,6 +122,15 @@ ok('IDが重複していない',             new Set(GENRES.map(g => g.id)).size
 ok('「その他」がある',               GENRES.some(g => g.id === 'other'));
 ok('全ジャンルに label と icon',     GENRES.every(g => g.label && g.icon));
 ok('全ジャンルに types と words の配列', GENRES.every(g => Array.isArray(g.types) && Array.isArray(g.words)));
+ok('BARがある',                     GENRES.some(g => g.id === 'bar' && g.label === 'BAR'));
+
+/* BAR と居酒屋が同じ店に二重で付かないよう、types/words が重ならないこと
+   （「バー」を居酒屋からBARへ移したので、ここで固定しておく） */
+const izGenre = GENRES.find(g => g.id === 'izakaya'), barGenre = GENRES.find(g => g.id === 'bar');
+ok('居酒屋の types は空（Places に専用の種別が無いため）', izGenre.types.length === 0);
+ok('BARの types にバーの種別が入る', barGenre.types.includes('bar'));
+ok('居酒屋とBARの words が重ならない',
+   izGenre.words.every(w => !barGenre.words.includes(w)));
 
 /* ============================================================
    6. ストレージ
@@ -335,13 +344,16 @@ SEL.shop = null;
 section('ジャンルの自動判定');
 DB = seed(); migrate();
 const gg = o => guessGenres(newShop(o)).sort().join(',');
-eq('primaryType を最優先',        gg({ primaryType:'bar', types:['restaurant'] }), 'izakaya');
+eq('primaryType を最優先',        gg({ primaryType:'bar', types:['restaurant'] }), 'bar');
 eq('primaryType が無ければ types', gg({ types:['sushi_restaurant'] }), 'sushi');
 eq('店名のキーワードで補う',      gg({ name:'酒場こうじ' }), 'izakaya');
 eq('粗いカテゴリでも店名で拾う',
    gg({ name:'中華そば 一番', primaryType:'japanese_restaurant' }).includes('chuka'), true);
 eq('メモからも拾う',              gg({ name:'ABC', memo:'ここの寿司はうまい' }), 'sushi');
 eq('該当が無ければ その他',       gg({ name:'ABC', primaryType:'zzz_restaurant' }), 'other');
+eq('BARは店名のキーワードでも拾える', gg({ name:'カクテルバー こうじ' }), 'bar');
+eq('居酒屋とBARは別ジャンルになる（同じ店名では重ならない）',
+   gg({ name:'酒場こうじ' }), 'izakaya');
 ok('複数ジャンルを持てる',        guessGenres(newShop({ name:'焼き鳥酒場' })).length >= 2);
 
 DB.shops = [];
