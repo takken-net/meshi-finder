@@ -12,8 +12,18 @@
    ■ 直したのに反映されないときは
      CACHE の版を上げてください。設定タブの
      「キャッシュを消して読み込み直す」でも直せます。
+
+   ■ 過去に踏んだ罠（同じ修正をしないこと）
+     install 時の事前キャッシュに素の fetch/cache.add を使うと、
+     ブラウザ本体の HTTP キャッシュ（Cache Storage とは別物）に
+     まだ新鮮な古いファイルが残っていた場合、CACHE の版を上げても
+     「新しいキャッシュの中身が実は古いファイル」という事故になる。
+     そのため下の install では { cache: 'reload' } で必ず
+     ネットワークから素通しで取り直す。設定タブの「消して読み込み直す」も
+     Cache Storage は消せても、ブラウザ本体のHTTPキャッシュまでは
+     消せないので、この対策とセットで初めて確実になる。
    ============================================================ */
-const CACHE = 'meshi-v12';        // JSを変更したら必ずこの版を上げる（古い表示が配られ続けるため）
+const CACHE = 'meshi-v13';        // JSを変更したら必ずこの版を上げる（古い表示が配られ続けるため）
 
 const SHELL = [
   './',
@@ -39,10 +49,12 @@ const SHELL = [
 ];
 
 self.addEventListener('install', e => {
-  /* 1つでも取れないと全部失敗するため、1件ずつ入れて失敗は見逃す */
+  /* { cache:'reload' } でブラウザのHTTPキャッシュを飛ばし、必ず本物の最新を取る。
+     1つでも取れないと全部失敗するため、1件ずつ入れて失敗は見逃す */
   e.waitUntil(
     caches.open(CACHE)
-      .then(c => Promise.all(SHELL.map(u => c.add(u).catch(() => null))))
+      .then(c => Promise.all(SHELL.map(u =>
+        fetch(u, { cache: 'reload' }).then(res => res.ok ? c.put(u, res) : null).catch(() => null))))
       .then(() => self.skipWaiting())
   );
 });
@@ -69,14 +81,16 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  /* まずキャッシュ、無ければ通信。取れたものは次回のために貯める */
-  e.respondWith(
-    caches.match(req).then(hit => hit || fetch(req).then(res => {
-      if(res && res.ok){
-        const copy = res.clone();
-        caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
-      }
+  /* stale-while-revalidate: 表示はキャッシュ優先で即返しつつ、
+     裏で必ずネットワークにも取りにいってキャッシュを更新する。
+     こうしておくと、CACHE の版を上げ忘れても次回の表示から新しくなる */
+  e.respondWith((async () => {
+    const c = await caches.open(CACHE);
+    const hit = await c.match(req);
+    const network = fetch(req).then(res => {
+      if(res && res.ok) c.put(req, res.clone());
       return res;
-    }).catch(() => caches.match('./index.html')))
-  );
+    }).catch(() => null);
+    return hit || (await network) || (await caches.match('./index.html'));
+  })());
 });
