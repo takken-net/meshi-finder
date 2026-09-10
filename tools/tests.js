@@ -117,7 +117,7 @@ eq('distLabel null',         distLabel(null), '—');
    5. ジャンル定義
    ============================================================ */
 section('ジャンル');
-ok('既定ジャンルが11種以上',         GENRES.length >= 11, `${GENRES.length} 種`);
+ok('既定ジャンルが5種以上',          GENRES.length >= 5, `${GENRES.length} 種`);
 ok('IDが重複していない',             new Set(GENRES.map(g => g.id)).size === GENRES.length);
 ok('「その他」がある',               GENRES.some(g => g.id === 'other'));
 ok('全ジャンルに label と icon',     GENRES.every(g => g.label && g.icon));
@@ -133,14 +133,14 @@ ok('テスト用の localStorage に差し替わっている', window.__lsFake =
 load();
 ok('load で DB ができる', !!DB);
 eq('初期状態は0軒',       DB.shops.length, 0);
-ok('初期ジャンルが入る',  DB.genres.length >= 11);
+ok('初期ジャンルが入る',  DB.genres.length >= 5);
 eq('データ形式のバージョン', DB._v, 1);
 eq('本日の使用回数は0',   DB.settings.usage.n, 0);
-eq('genreOf 既知のID',    genreOf('ramen').label, 'ラーメン');
+eq('genreOf 既知のID',    genreOf('izakaya').label, '居酒屋');
 eq('genreOf 未知のIDでも落ちない', genreOf('zzz').label, 'zzz');
-eq('genreLabels',         genreLabels(['ramen','sushi']).join('/'), '🍜ラーメン/🍣寿司');
+eq('genreLabels',         genreLabels(['izakaya','sushi']).join('/'), '🍺居酒屋/🍣寿司');
 
-const s1 = putShop(newShop({ name: '麺屋 こうじ', genres: ['ramen'], lat: 35.68, lng: 139.76 }));
+const s1 = putShop(newShop({ name: '麺屋 こうじ', genres: ['izakaya'], lat: 35.68, lng: 139.76 }));
 eq('putShop で1軒増える',      DB.shops.length, 1);
 eq('putShop が nameKey を作る', s1.nameKey, normName('麺屋 こうじ'));
 eq('shopOf で引ける',          shopOf(s1.id).name, '麺屋 こうじ');
@@ -193,13 +193,38 @@ eq('店は残る',                 DB.shops.length, 1);
 ok('欠けたフィールドが埋まる', Array.isArray(DB.shops[0].genres));
 eq('nameKey が作られる',       DB.shops[0].nameKey, normName('古い店'));
 eq('settings が埋まる',        DB.settings.dailyLimit, 100);
-ok('genres が埋まる',          DB.genres.length >= 11);
+ok('genres が埋まる',          DB.genres.length >= 5);
 eq('_v が上がる',              DB._v, 1);
 
 DB = { shops: [], visits: [{ id:'V-x', shop:'S-missing', date:'2026-01-01' }], queue: ['S-missing'] };
 migrate();
 eq('消えた店の訪問記録は掃除される', DB.visits.length, 0);
 eq('消えた店のキューは掃除される',   DB.queue.length, 0);
+
+/* ジャンルの構成を変えた（項目を足した／消した）ときの同期。
+   既存ユーザーの DB.genres は初回に複製したまま古い一覧を持ち続けるので、
+   migrate() が現在の GENRES と食い違いを検知して同期し、
+   自動分類の店だけジャンルを付け直すことを確かめる */
+DB = seed();
+DB.genres = [
+  { id:'ramen', label:'ラーメン', icon:'🍜', types:['ramen_restaurant'], words:['ラーメン','麺屋'] },
+  { id:'other', label:'その他', icon:'🍴', types:[], words:[] },
+];   // 旧構成（現在の GENRES とは ID 構成が違う）を再現
+const autoOld = putShop(newShop({ name:'酒場こうじ', genres:['ramen'] }));                 // 自動分類（今なら izakaya）
+const manOld  = putShop(newShop({ name:'手動の店', genres:['ramen'], genresManual:true })); // 手動指定
+migrate();
+eq('ID構成が違えば同期する', DB.genres.map(g => g.id).sort().join(','),
+   GENRES.map(g => g.id).sort().join(','));
+eq('自動分類の店は今の一覧で付け直される', shopOf(autoOld.id).genres.join(','), 'izakaya');
+eq('手動指定の店は同期後も変えない',       shopOf(manOld.id).genres.join(','), 'ramen');
+
+/* 逆に、ID構成が変わっていなければ触らない（無駄な再計算をしない） */
+DB = seed();
+const noTouch = putShop(newShop({ name:'酒場こうじ', genres:['sushi'] })); // 実際とは違う値を仮に入れる
+const genresBefore = JSON.stringify(DB.genres);
+migrate();
+eq('構成が同じなら genres は書き換えない', JSON.stringify(DB.genres), genresBefore);
+eq('構成が同じなら店のジャンルも変えない', shopOf(noTouch.id).genres.join(','), 'sushi');
 
 DB = seed();
 DB.settings.usage = { date: '2020-01-01', n: 57 };
@@ -222,7 +247,7 @@ function renderAll(label){
 DB = seed(); migrate();
 renderAll('空データ: ');
 
-putShop(newShop({ name:'麺屋 こうじ', genres:['ramen'], lat:35.68, lng:139.76,
+putShop(newShop({ name:'麺屋 こうじ', genres:['izakaya'], lat:35.68, lng:139.76,
                   memo:'つけ麺がうまい', myRate:4, tags:['一人向き'], fav:true }));
 putShop(newShop({ name:'鮨 たなか', genres:['sushi','washoku'], myRate:5 }));
 putShop(newShop({ name:'<script>危険</scr'+'ipt>', memo:'エスケープの確認 & "引用符"' }));
@@ -310,21 +335,23 @@ SEL.shop = null;
 section('ジャンルの自動判定');
 DB = seed(); migrate();
 const gg = o => guessGenres(newShop(o)).sort().join(',');
-eq('primaryType を最優先',        gg({ primaryType:'ramen_restaurant', types:['restaurant'] }), 'ramen');
+eq('primaryType を最優先',        gg({ primaryType:'bar', types:['restaurant'] }), 'izakaya');
 eq('primaryType が無ければ types', gg({ types:['sushi_restaurant'] }), 'sushi');
-eq('店名のキーワードで補う',      gg({ name:'麺屋こうじ' }), 'ramen');
+eq('店名のキーワードで補う',      gg({ name:'酒場こうじ' }), 'izakaya');
 eq('粗いカテゴリでも店名で拾う',
-   gg({ name:'中華そば 一番', primaryType:'japanese_restaurant' }).includes('ramen'), true);
+   gg({ name:'中華そば 一番', primaryType:'japanese_restaurant' }).includes('chuka'), true);
 eq('メモからも拾う',              gg({ name:'ABC', memo:'ここの寿司はうまい' }), 'sushi');
 eq('該当が無ければ その他',       gg({ name:'ABC', primaryType:'zzz_restaurant' }), 'other');
-ok('複数ジャンルを持てる',        guessGenres(newShop({ name:'焼肉ホルモン酒場' })).length >= 2);
+ok('複数ジャンルを持てる',        guessGenres(newShop({ name:'焼き鳥酒場' })).length >= 2);
 
 DB.shops = [];
-const auto = putShop(newShop({ name:'麺屋こうじ' }));
+const auto = putShop(newShop({ name:'酒場こうじ' }));
+/* 一覧から消えた「ramen」を手で選んだ体で残す。
+   ジャンル一覧に無いIDでも、手で決めた店は reguessAll が勝手に変えないことを確かめる */
 const manu = putShop(newShop({ name:'鮨たなか', genres:['ramen'], genresManual:true }));
 eq('reguessAll が付け直す', reguessAll(), 1);
-eq('自動の店は直る',        shopOf(auto.id).genres.join(','), 'ramen');
-eq('手で直した店は触らない', shopOf(manu.id).genres.join(','), 'ramen');
+eq('自動の店は直る',        shopOf(auto.id).genres.join(','), 'izakaya');
+eq('手で直した店は触らない（一覧に無いIDでも）', shopOf(manu.id).genres.join(','), 'ramen');
 
 /* ============================================================
    11. 営業時間の正規化と営業中判定
@@ -388,13 +415,12 @@ ok('不明バッジ',          openBadge(newShop({}), wm(1,12,0)).includes('不�
    ============================================================ */
 section('キーワード検索');
 const kwShop = newShop({ name:'麺屋 こうじ', memo:'つけ麺がうまい', tags:['一人向き'],
-                         genres:['ramen'], addr:'東京都新宿区' });
+                         genres:['izakaya'], addr:'東京都新宿区' });
 ok('店名で当たる',       kwMatch(kwShop, '麺屋'));
 ok('メモで当たる',       kwMatch(kwShop, 'つけ麺'));
 ok('タグで当たる',       kwMatch(kwShop, '一人向き'));
 ok('住所で当たる',       kwMatch(kwShop, '新宿'));
-ok('ジャンル名で当たる', kwMatch(kwShop, 'ラーメン'));
-ok('ひらがなでも当たる', kwMatch(kwShop, 'らーめん'));
+ok('ジャンル名で当たる', kwMatch(kwShop, '居酒屋'));
 ok('AND検索（両方含む）', kwMatch(kwShop, '麺屋 つけ麺'));
 ok('AND検索（片方が無ければ外れる）', !kwMatch(kwShop, '麺屋 焼肉'));
 ok('全角空白も区切りになる', kwMatch(kwShop, '麺屋　つけ麺'));
@@ -407,12 +433,12 @@ ok('関係ない語は外れる',  !kwMatch(kwShop, '寿司'));
 section('絞り込み');
 DB = seed(); migrate();
 const HERE = { lat: 35.6812, lng: 139.7671 };                       // 東京駅
-const near1 = putShop(newShop({ name:'近いラーメン', genres:['ramen'],
+const near1 = putShop(newShop({ name:'近い和食', genres:['washoku'],
                     lat:35.6820, lng:139.7680, hours: normHours({ periods:[lunch] }) }));
 const far1  = putShop(newShop({ name:'遠い寿司',   genres:['sushi'],
                     lat:35.6285, lng:139.7387 }));                  // 品川駅 ≒6.4km
-const nopos = putShop(newShop({ name:'位置不明の焼肉', genres:['yakiniku'], myRate:5 }));
-const gone  = putShop(newShop({ name:'閉業した店', genres:['ramen'],
+const nopos = putShop(newShop({ name:'位置不明の居酒屋', genres:['izakaya'], myRate:5 }));
+const gone  = putShop(newShop({ name:'閉業した店', genres:['washoku'],
                     lat:35.6813, lng:139.7672, bizStatus:'CLOSED_PERMANENTLY' }));
 
 let rows = searchShops({}, HERE, wm(1,12,0));
@@ -427,11 +453,11 @@ near('距離が計算される',   rows[1].dist, 6400, 300);
 eq('ジャンルで絞れる',
    searchShops({ genres:['sushi'] }, HERE, wm(1,12,0)).length, 1);
 eq('複数ジャンルは OR',
-   searchShops({ genres:['sushi','yakiniku'] }, HERE, wm(1,12,0)).length, 2);
+   searchShops({ genres:['sushi','izakaya'] }, HERE, wm(1,12,0)).length, 2);
 eq('キーワードで絞れる',
-   searchShops({ kw:'焼肉' }, HERE, wm(1,12,0)).length, 1);
+   searchShops({ kw:'居酒屋' }, HERE, wm(1,12,0)).length, 1);
 eq('ジャンルとキーワードは AND',
-   searchShops({ genres:['sushi'], kw:'焼肉' }, HERE, wm(1,12,0)).length, 0);
+   searchShops({ genres:['sushi'], kw:'居酒屋' }, HERE, wm(1,12,0)).length, 0);
 
 eq('距離で絞れる（1km以内）',
    searchShops({ radius:1000 }, HERE, wm(1,12,0)).length, 1);
@@ -481,7 +507,7 @@ RAND = realRand;
    ============================================================ */
 section('探す・結果');
 DB = seed(); migrate();
-putShop(newShop({ name:'麺屋こうじ', genres:['ramen'], lat:35.6820, lng:139.7680,
+putShop(newShop({ name:'酒場こうじ', genres:['izakaya'], lat:35.6820, lng:139.7680,
                   hours: normHours({ periods:[lunch] }) }));
 putShop(newShop({ name:'鮨たなか', genres:['sushi'], lat:35.6285, lng:139.7387 }));
 Q = { genres:[], kw:'', openOnly:false, radius:0 };
@@ -508,7 +534,7 @@ SEL.sub = '';
 
 ok('結果に2軒出る', (resultListHTML().match(/class="card"/g) || []).length === 2);
 ok('結果に距離が出る', resultListHTML().includes('m<') || resultListHTML().includes('km<'));
-Q.genres = ['ramen'];
+Q.genres = ['izakaya'];
 eq('ジャンルを選ぶと絞られる', (resultListHTML().match(/class="card"/g) || []).length, 1);
 Q.genres = []; Q.kw = 'ありえない語';
 ok('該当0件でも落ちない', resultListHTML().length > 0);
@@ -520,9 +546,9 @@ noThrow('ルーレット結果の画面', () => VIEWS.result());
 SEL.sub = ''; PICK = null;
 
 /* 条件の要約 */
-Q = { genres:['ramen'], kw:'つけ麺', openOnly:true, radius:840, rate:4 };
+Q = { genres:['izakaya'], kw:'つけ麺', openOnly:true, radius:840, rate:4 };
 const cond = condHTML();
-ok('条件に ジャンルが出る',   cond.includes('ラーメン'));
+ok('条件に ジャンルが出る',   cond.includes('居酒屋'));
 ok('条件に キーワードが出る', cond.includes('つけ麺'));
 ok('条件に 営業中が出る',     cond.includes('今やってる'));
 ok('条件に 徒歩の範囲が出る', cond.includes('徒歩10分'));
@@ -647,6 +673,8 @@ eq('無関係な店 → 新規',
    20. 既存への重ね方 — ユーザー資産を壊さないこと
    ============================================================ */
 section('取り込みの重ね方');
+/* genres:['ramen'] は現在の一覧に無いIDだが、手で決めた値なので
+   mergeShop・reguessAll のどちらからも変えられないことを確かめる意図であえて使う */
 const mine = putShop(newShop({ name:'麺屋こうじ', myRate:5, tags:['一人向き'],
                                memo:'私のメモ', fav:true, genres:['ramen'], genresManual:true }));
 mergeShop(mine, newShop({ name:'麺屋こうじ', placeId:'ChIJ_BBB', lat:35.68, lng:139.76,
@@ -698,7 +726,7 @@ eq('3軒が登録される', DB.shops.length, 3);
 eq('座標が入った店がある', DB.shops.filter(s => s.lat != null).length, 1);
 eq('メモが入る',      DB.shops.find(s => s.name === '麺屋こうじ').memo, 'つけ麺がうまい');
 eq('Comment もメモに入る', DB.shops.find(s => s.name === '鮨たなか').memo, 'また行く');
-eq('ジャンルが自動で付く', DB.shops.find(s => s.name === '麺屋こうじ').genres.join(','), 'ramen');
+eq('該当ジャンルが無ければその他になる', DB.shops.find(s => s.name === '麺屋こうじ').genres.join(','), 'other');
 eq('位置が無い店・最寄り駅が未確認の店はキューに積まれる', DB.queue.length, 3);
 ok('座標入りの店も最寄り駅のために積まれる',
    DB.queue.includes(DB.shops.find(s => s.name === '麺屋こうじ').id));
@@ -816,7 +844,7 @@ eq('allLists の件数',    allLists()[0].n, 2);
 
 /* 別アカウントの CSV。1軒は同じ店（cid が同じ）、1軒は新しい店 */
 importCSV('Title,URL\n麺屋こうじ,https://maps.google.com/?cid=1\n' +
-                    '焼肉ホルモン,https://maps.google.com/?cid=3\n', '仕事用 / お気に入り');
+                    '酒場ホルモン,https://maps.google.com/?cid=3\n', '仕事用 / お気に入り');
 eq('重なった店は増えない', DB.shops.length, 3);
 const both = DB.shops.find(s => s.name === '麺屋こうじ');
 eq('両方のリストに属する', both.lists.length, 2);
@@ -834,7 +862,7 @@ eq('リストで絞れる（仕事）', searchShops({ list:'仕事用 / お気�
 eq('リスト指定なしは全部',   searchShops({}, null, 0).length, 3);
 eq('存在しないリストは0件',  searchShops({ list:'ないリスト' }, null, 0).length, 0);
 eq('リストとジャンルは AND',
-   searchShops({ list:'仕事用 / お気に入り', genres:['ramen'] }, null, 0).length, 1);
+   searchShops({ list:'仕事用 / お気に入り', genres:['izakaya'] }, null, 0).length, 1);
 ok('リスト名でキーワード検索もできる', kwMatch(both, '仕事用'));
 
 /* 手で編集してもリストは壊れない */
@@ -940,7 +968,7 @@ const target = putShop(newShop({ name:'私が付けた名前', myRate:5, tags:['
 applyPlace(target, normPlace(PJ()));
 eq('座標が入る',           target.lat, 35.6812);
 eq('営業時間が入る',       target.hours.ranges.length, 1);
-eq('ジャンルが自動で付く', target.genres.join(','), 'ramen');
+eq('該当ジャンルが無ければその他になる', target.genres.join(','), 'other');
 eq('状態が ok になる',     target.status, 'ok');
 eq('取得日が入る',         target.fetchedAt, today());
 eq('店名は上書きしない',   target.name, '私が付けた名前');
@@ -1398,10 +1426,10 @@ ok('Leaflet が読み込まれている', typeof L !== 'undefined');
 DB = seed(); migrate();
 /* ピンの色は「いま営業中か」で変わります。テストを実時刻に左右されないよう、
    常に営業中になる24時間営業の店で確かめます */
-putShop(newShop({ name:'近い店', genres:['ramen'], lat:35.6820, lng:139.7680,
+putShop(newShop({ name:'近い店', genres:['izakaya'], lat:35.6820, lng:139.7680,
                   hours: normHours({ periods:[{ open:{day:0,hour:0,minute:0} }] }) }));
 putShop(newShop({ name:'遠い店', genres:['sushi'], lat:35.6285, lng:139.7387 }));
-putShop(newShop({ name:'位置なしの店', genres:['cafe'] }));
+putShop(newShop({ name:'位置なしの店', genres:['chuka'] }));
 Q = { genres:[], kw:'', openOnly:false, radius:0, list:'' };
 POS = { lat:35.6812, lng:139.7671, acc:20, label:'現在地' };
 GEO = 'ok';
@@ -1416,7 +1444,7 @@ eq('座標のある店ぶんのピン＋現在地', pinCount, 3);
 ok('24時間営業は営業中のピンになる', $('#map').innerHTML.includes('pin open'));
 ok('営業時間が不明な店は別のピン',   $('#map').innerHTML.includes('pin unknown'));
 ok('現在地のピンがある',             $('#map').innerHTML.includes('pin here'));
-ok('ピンにジャンルの絵文字が出る',   $('#map').innerHTML.includes('🍜'));
+ok('ピンにジャンルの絵文字が出る',   $('#map').innerHTML.includes('🍺'));
 
 /* タブを移ると必ず後始末される（残すとイベントが宙に浮いて後で落ちる） */
 TAB = 'find';
@@ -1492,7 +1520,7 @@ $('#view').innerHTML = VIEWS.data();          // 入力欄を本物のDOMに出�
 await saveShared();
 eq('1軒登録される',        DB.shops.length, 1);
 eq('出所が共有になる',     DB.shops[0].src, 'share');
-eq('ジャンルが自動で付く', DB.shops[0].genres.join(','), 'ramen');
+eq('該当ジャンルが無ければその他になる', DB.shops[0].genres.join(','), 'other');
 eq('位置が無いのでキューに入る', DB.queue.length, 1);
 eq('確認画面は閉じる',     SHARE, null);
 

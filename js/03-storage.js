@@ -97,6 +97,18 @@ function migrate(){
   DB.visits = DB.visits.filter(v => ids.has(v.shop));
   DB.queue  = DB.queue.filter(id => ids.has(id));
 
+  /* ジャンルの定義（02-genres.js の GENRES）を最新に同期する。
+     ユーザーが個別に編集する機能はまだ無いため、丸ごと置き換えて構わない。
+     ID構成が変わっていた（項目を足した／消した）ときだけ、
+     手動で選んだ店（genresManual）以外のジャンルを付け直す。
+     何もしないと、既存ユーザーの DB.genres は初回に複製したまま永久に古くなる */
+  const curIds = DB.genres.map(g => g.id).sort().join(',');
+  const newIds = GENRES.map(g => g.id).sort().join(',');
+  if(curIds !== newIds){
+    DB.genres = JSON.parse(JSON.stringify(GENRES));
+    if(typeof reguessAll === 'function') reguessAll();
+  }
+
   DB._v = 1;
 }
 

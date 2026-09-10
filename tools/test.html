@@ -72,6 +72,11 @@ try{
 window.__alerts = [];
 window.alert = msg => { window.__alerts.push(String(msg)); };
 window.confirm = () => window.__confirmAnswer !== false;   // 既定は「OK」。個別のテストで変えられる
+
+window.onerror = (msg, src, line, col, err) => {
+  document.getElementById('sum').textContent = 'ERROR: ' + msg + ' @' + line + ':' + col + ' ' + (err && err.stack || '');
+  document.getElementById('sum').className = 'ng';
+};
 </script>
 
 <script src="../vendor/leaflet/leaflet.js"></script>
