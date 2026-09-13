@@ -279,6 +279,50 @@ EDIT = JSON.parse(JSON.stringify(DB.shops[0])); SEL.edit = true;
 noThrow('編集画面が描画できる', () => VIEWS.shops());
 SEL.shop = null; SEL.edit = false; EDIT = null;
 
+/* 行った記録 — コメント欄の改行と、あとからの修正 */
+SEL.shop = DB.shops[0].id;
+const vsShop = DB.shops[0];
+ok('コメント欄は複数行入力できる（textarea）', VIEWS.shops().includes('<textarea id="v-memo"'));
+
+DB.visits.push({ id:'V-mline', shop: vsShop.id, date:'2026-08-01', memo:'ラーメン\n餃子も' });
+let vHtml = VIEWS.shops();
+ok('保存した改行が <br> になって表示される', vHtml.includes('ラーメン<br>餃子も'));
+ok('生の改行のままでは出さない', !vHtml.includes('ラーメン\n餃子も'));
+ok('編集ボタンが出る', vHtml.includes('編集'));
+
+editVisit('V-mline');
+eq('編集開始で V_EDIT が立つ', V_EDIT, 'V-mline');
+vHtml = VIEWS.shops();
+ok('編集中は入力欄になる', vHtml.includes('id="ve-date-V-mline"') && vHtml.includes('id="ve-memo-V-mline"'));
+
+$('#view').innerHTML = vHtml;                 // 本物のDOMに出してから値を読ませる
+$('#ve-date-V-mline').value = '2026-08-02';
+$('#ve-memo-V-mline').value = '直したコメント\n2行目';
+saveVisitEdit('V-mline');
+const fixed = DB.visits.find(v => v.id === 'V-mline');
+eq('日付が修正される', fixed.date, '2026-08-02');
+eq('コメントも修正される（改行込み）', fixed.memo, '直したコメント\n2行目');
+eq('保存すると編集状態が終わる', V_EDIT, null);
+
+editVisit('V-mline');
+cancelVisitEdit();
+eq('やめるでも編集状態が終わる', V_EDIT, null);
+eq('やめた場合は元の内容のまま', DB.visits.find(v => v.id === 'V-mline').memo, '直したコメント\n2行目');
+
+editVisit('V-mline');
+$('#view').innerHTML = VIEWS.shops();
+$('#ve-date-V-mline').value = '';
+saveVisitEdit('V-mline');
+eq('日付を空にすると保存されない', DB.visits.find(v => v.id === 'V-mline').date, '2026-08-02');
+cancelVisitEdit();
+
+editVisit('V-mline');
+delVisit('V-mline');
+eq('編集中の記録を削除すると編集状態も終わる', V_EDIT, null);
+
+openShop(vsShop.id);
+eq('店を開き直すと編集状態はリセットされる', V_EDIT, null);
+
 /* HTMLエスケープ — ここが漏れると壊れた店名で画面が崩れる */
 const listHtml = shopListItemsHTML();
 ok('店名の < > がエスケープされる', !listHtml.includes('<script>危険'), '危険なタグがそのまま出ています');

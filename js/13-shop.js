@@ -3,6 +3,7 @@
    ============================================================ */
 let EDIT = null;                 // 編集中の店（保存するまで DB には入れない）
 let SHOP_Q = { kw:'', sort:'name', only:'' };
+let V_EDIT = null;                // 編集中の訪問記録のID（null なら誰も編集していない）
 
 /* ------------------------------------------------------------
    一覧
@@ -78,8 +79,8 @@ function shopListItemsHTML(){
 /* ------------------------------------------------------------
    詳細・編集
    ------------------------------------------------------------ */
-function openShop(id){ SEL.shop = id; SEL.edit = false; EDIT = null; render(); }
-function backToList(){ SEL.shop = null; SEL.edit = false; EDIT = null; render(); }
+function openShop(id){ SEL.shop = id; SEL.edit = false; EDIT = null; V_EDIT = null; render(); }
+function backToList(){ SEL.shop = null; SEL.edit = false; EDIT = null; V_EDIT = null; render(); }
 
 function addShop(){
   EDIT = newShop();
@@ -162,16 +163,10 @@ function shopDetailHTML(){
         店名を直して取り直すか、下の編集から位置を手で入れてください。</p>` : ''}
 
     <h3 class="mt">行った記録 <span class="mini">${vs.length} 回</span></h3>
-    <div class="row gap">
-      <input id="v-date" class="fld sm" type="date" value="${today()}">
-      <input id="v-memo" class="fld" type="text" placeholder="何を食べた？（任意）">
-      <button onclick="addVisit()">記録</button>
-    </div>
-    ${vs.length ? `<div class="cards mt">${vs.map(v=>`
-      <div class="card row between">
-        <span>${esc(v.date)} ${v.memo?`<span class="mini">${esc(v.memo)}</span>`:''}</span>
-        <button class="ghost sm" onclick="delVisit('${v.id}')">削除</button>
-      </div>`).join('')}</div>` : '<p class="mini mt">まだ記録がありません</p>'}
+    <input id="v-date" class="fld sm" type="date" value="${today()}">
+    <textarea id="v-memo" class="fld mt" rows="2" placeholder="何を食べた？（任意・複数行OK）"></textarea>
+    <div class="mt"><button class="grow" onclick="addVisit()">記録</button></div>
+    ${vs.length ? `<div class="cards mt">${vs.map(visitCardHTML).join('')}</div>` : '<p class="mini mt">まだ記録がありません</p>'}
 
     <div class="mt2 right">
       <button class="danger ghost" onclick="removeShop()">この店を削除</button>
@@ -291,6 +286,32 @@ function removeShop(){
   toast('削除しました');
 }
 
+/** 訪問記録1件ぶんのカード。編集中なら入力フォーム、それ以外は表示だけ */
+function visitCardHTML(v){
+  if(V_EDIT === v.id){
+    return `
+    <div class="card">
+      <input id="ve-date-${v.id}" class="fld sm" type="date" value="${esc(v.date)}">
+      <textarea id="ve-memo-${v.id}" class="fld mt" rows="2">${esc(v.memo)}</textarea>
+      <div class="row gap mt">
+        <button class="pri grow" onclick="saveVisitEdit('${v.id}')">保存</button>
+        <button class="grow" onclick="cancelVisitEdit()">やめる</button>
+      </div>
+    </div>`;
+  }
+  return `
+    <div class="card">
+      <div class="row between">
+        <b>${esc(v.date)}</b>
+        <span class="row gap">
+          <button class="ghost sm" onclick="editVisit('${v.id}')">編集</button>
+          <button class="ghost sm" onclick="delVisit('${v.id}')">削除</button>
+        </span>
+      </div>
+      ${v.memo ? `<p class="mini mt">${esc(v.memo).replace(/\n/g,'<br>')}</p>` : ''}
+    </div>`;
+}
+
 function addVisit(){
   const s = shopOf(SEL.shop); if(!s) return;
   const d = ($('#v-date')||{}).value || today();
@@ -301,5 +322,18 @@ function addVisit(){
 }
 function delVisit(id){
   DB.visits = DB.visits.filter(v => v.id !== id);
+  if(V_EDIT === id) V_EDIT = null;
   save(); render();
+}
+function editVisit(id){ V_EDIT = id; render(); }
+function cancelVisitEdit(){ V_EDIT = null; render(); }
+function saveVisitEdit(id){
+  const v = DB.visits.find(x => x.id === id); if(!v) return;
+  const d = (($('#ve-date-'+id)||{}).value || '').trim();
+  const m = (($('#ve-memo-'+id)||{}).value || '').trim();
+  if(!d){ alert('日付を入れてください'); return; }
+  v.date = d; v.memo = m;
+  V_EDIT = null;
+  save(); render();
+  toast('記録を修正しました');
 }
