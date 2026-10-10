@@ -31,13 +31,22 @@ function handleShare(){
   TAB = 'data'; SEL.sub = 'share';
 }
 
+/* Google マップの共有テキストには、住所の代わりに電話番号の行が
+   混ざっていることがある。数字・記号だけの行（日本語を含まない）で
+   数字が9桁以上あれば電話番号とみなし、キーワード欄には入れない */
+function looksLikePhone(s){
+  const t = String(s ?? '').trim();
+  if(!t || !/^[+0-9()\-\s]+$/.test(t)) return false;
+  return (t.match(/\d/g) || []).length >= 9;
+}
+
 /** 共有されたテキストから店名・住所・URLを取り出す */
 function parseShared(title, text, url){
   const all = [title, text].filter(Boolean).join('\n');
   const urls = all.match(/https?:\/\/\S+/g) || [];
   const link = url || urls[0] || '';
 
-  /* URLの行を取り除いた残りを上から見る。1行目を店名、次の行を住所の手がかりにする */
+  /* URLの行を取り除いた残りを上から見る。1行目を店名にする */
   const lines = all.split('\n')
     .map(s => s.trim())
     .filter(Boolean)
@@ -45,11 +54,15 @@ function parseShared(title, text, url){
     .map(s => s.replace(/https?:\/\/\S+/g, '').trim())
     .filter(Boolean);
 
+  /* 2行目以降から、電話番号っぽくない最初の行を住所の手がかりにする。
+     見つからなければ（電話番号しか無い等）キーワード欄は空のままにする */
+  const addr = lines.slice(1).find(l => !looksLikePhone(l)) || '';
+
   /* URLからも店名や座標が取れることがあるので、足りない分を補う */
   const ex = parseMapsUrl(link);
   return {
     name: lines[0] || ex.name || '',
-    addr: lines[1] || '',
+    addr,
     url:  link,
     lat:  ex.lat, lng: ex.lng,
     placeId: ex.placeId, srcId: ex.srcId,

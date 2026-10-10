@@ -1584,6 +1584,22 @@ sp = parseShared('', '麺屋こうじ\n東京都新宿区1-1\nhttps://maps.app.g
 eq('住所も拾う（1行目が店名）', sp.name, '麺屋こうじ');
 eq('2行目を場所の手がかりに',   sp.addr, '東京都新宿区1-1');
 
+/* 電話番号が住所の代わりに来ることがある。キーワード欄には入れない */
+ok('電話番号らしい行と判定できる',   looksLikePhone('03-1234-5678'));
+ok('携帯番号も電話番号と判定できる', looksLikePhone('090-1234-5678'));
+ok('フリーダイヤルも電話番号と判定できる', looksLikePhone('0120-123-456'));
+ok('ハイフン無しでも電話番号と判定できる', looksLikePhone('0312345678'));
+ok('住所は電話番号と判定しない',     !looksLikePhone('東京都新宿区1-1'));
+ok('駅名は電話番号と判定しない',     !looksLikePhone('新宿駅'));
+ok('短い数字は電話番号と判定しない', !looksLikePhone('123-456'));
+ok('空文字は電話番号と判定しない',   !looksLikePhone(''));
+
+sp = parseShared('', '麺屋こうじ\n03-1234-5678\nhttps://maps.app.goo.gl/abc', '');
+eq('電話番号の行はキーワード欄に入れない', sp.addr, '');
+
+sp = parseShared('', '麺屋こうじ\n03-1234-5678\n東京都新宿区1-1\nhttps://maps.app.goo.gl/abc', '');
+eq('電話番号の次に住所があれば、そちらを拾う', sp.addr, '東京都新宿区1-1');
+
 sp = parseShared('', '', 'https://www.google.com/maps/place/%E9%BA%BA%E5%B1%8B/@35.68,139.76,17z/');
 eq('本文が無ければURLから店名', sp.name, '麺屋');
 near('URLから座標も取る',       sp.lat, 35.68, 0.01);
