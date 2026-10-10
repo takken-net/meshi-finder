@@ -258,7 +258,7 @@ renderAll('空データ: ');
 
 putShop(newShop({ name:'麺屋 こうじ', genres:['izakaya'], lat:35.68, lng:139.76,
                   memo:'つけ麺がうまい', myRate:4, tags:['一人向き'], fav:true }));
-putShop(newShop({ name:'鮨 たなか', genres:['sushi','washoku'], myRate:5 }));
+putShop(newShop({ name:'鮨 たなか', genres:['sushi','yakiniku'], myRate:5 }));
 putShop(newShop({ name:'<script>危険</scr'+'ipt>', memo:'エスケープの確認 & "引用符"' }));
 renderAll('実データ: ');
 
@@ -322,6 +322,42 @@ eq('編集中の記録を削除すると編集状態も終わる', V_EDIT, null)
 
 openShop(vsShop.id);
 eq('店を開き直すと編集状態はリセットされる', V_EDIT, null);
+
+/* 手動登録で、すでにある店と同じ名前なら知らせる
+   （終わったら shops.length=3 の前提に戻すため、増やした分は最後に消す） */
+const shopCountBefore = DB.shops.length;
+addShop();
+$('#view').innerHTML = shopEditHTML();
+$('#e-name').value = '麺屋 こうじ';        // 既存の店と同じ名前
+window.__confirmAnswer = false;             // 「別の店として登録しますか」に いいえ
+saveShop();
+eq('同じ名前なら確認を挟み、断ると増えない店数', DB.shops.length, shopCountBefore);
+eq('編集画面のまま（保存されない）', SEL.edit, true);
+
+$('#e-name').value = '麺屋 こうじ';
+window.__confirmAnswer = true;              // 今度は「はい」（別の店として登録する）
+saveShop();
+eq('承諾すれば同名でも登録できる', DB.shops.length, shopCountBefore + 1);
+const dupAdded = SEL.shop;
+window.__confirmAnswer = undefined;
+
+addShop();
+$('#view').innerHTML = shopEditHTML();
+$('#e-name').value = 'まったく新しい店';    // 誰とも被らない名前
+saveShop();
+eq('重複が無ければ確認なしで登録できる', DB.shops.length, shopCountBefore + 2);
+const freshAdded = SEL.shop;
+
+const existing = DB.shops[0];
+openShop(existing.id); editShop();
+$('#view').innerHTML = shopEditHTML();
+$('#e-name').value = existing.name;         // 自分自身は重複として数えない
+saveShop();
+eq('編集時は自分自身との重複を警告しない', DB.shops.length, shopCountBefore + 2);
+
+delShop(dupAdded); delShop(freshAdded);     // 以降のテストが元の3軒の前提で動けるように戻す
+backToList();
+eq('後片付け後は元の件数に戻る', DB.shops.length, shopCountBefore);
 
 /* HTMLエスケープ — ここが漏れると壊れた店名で画面が崩れる */
 const listHtml = shopListItemsHTML();
@@ -398,7 +434,7 @@ eq('該当が無ければ その他',       gg({ name:'ABC', primaryType:'zzz_re
 eq('BARは店名のキーワードでも拾える', gg({ name:'カクテルバー こうじ' }), 'bar');
 eq('居酒屋とBARは別ジャンルになる（同じ店名では重ならない）',
    gg({ name:'酒場こうじ' }), 'izakaya');
-ok('複数ジャンルを持てる',        guessGenres(newShop({ name:'焼き鳥酒場' })).length >= 2);
+ok('複数ジャンルを持てる',        guessGenres(newShop({ name:'焼肉酒場' })).length >= 2);
 
 DB.shops = [];
 const auto = putShop(newShop({ name:'酒場こうじ' }));
@@ -489,12 +525,12 @@ ok('関係ない語は外れる',  !kwMatch(kwShop, '寿司'));
 section('絞り込み');
 DB = seed(); migrate();
 const HERE = { lat: 35.6812, lng: 139.7671 };                       // 東京駅
-const near1 = putShop(newShop({ name:'近い和食', genres:['washoku'],
+const near1 = putShop(newShop({ name:'近い焼肉', genres:['yakiniku'],
                     lat:35.6820, lng:139.7680, hours: normHours({ periods:[lunch] }) }));
 const far1  = putShop(newShop({ name:'遠い寿司',   genres:['sushi'],
                     lat:35.6285, lng:139.7387 }));                  // 品川駅 ≒6.4km
 const nopos = putShop(newShop({ name:'位置不明の居酒屋', genres:['izakaya'], myRate:5 }));
-const gone  = putShop(newShop({ name:'閉業した店', genres:['washoku'],
+const gone  = putShop(newShop({ name:'閉業した店', genres:['yakiniku'],
                     lat:35.6813, lng:139.7672, bizStatus:'CLOSED_PERMANENTLY' }));
 
 let rows = searchShops({}, HERE, wm(1,12,0));

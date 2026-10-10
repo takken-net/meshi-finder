@@ -268,6 +268,16 @@ function saveShop(){
   if(EDIT.lat!=null && (Math.abs(EDIT.lat)>90 || Math.abs(EDIT.lng)>180)){
     alert('緯度は-90〜90、経度は-180〜180の範囲で入れてください'); return;
   }
+
+  /* 新規追加のときだけ、同じ店がすでに無いか確かめる（編集中の自分自身は除く）。
+     見つかっても止めはしない。「それでも登録するか」を選べるようにするだけ */
+  const isNew = !shopOf(EDIT.id);
+  if(isNew){
+    EDIT.nameKey = normName(EDIT.name);
+    const dup = findDup(EDIT, DB.shops.filter(s => s.id !== EDIT.id));
+    if(dup.hit && !confirm(`「${dup.hit.name}」としてすでに登録されています。\nそれでも別の店として登録しますか？`)) return;
+  }
+
   putShop(EDIT);
   SEL.shop = EDIT.id; SEL.edit = false; EDIT = null;
   save(); render();

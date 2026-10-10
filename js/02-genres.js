@@ -24,12 +24,9 @@ const GENRES = [
     types:['bar','pub','bar_and_grill','wine_bar','night_club'],
     words:['バー','バル','カクテル','ウイスキー','ワインバー','スナック','bar'] },
 
-  { id:'washoku', label:'和食', icon:'🍱',
-    types:['japanese_restaurant','tonkatsu_restaurant','udon_restaurant',
-           'unagi_restaurant','yakitori_restaurant','teppanyaki_restaurant','sukiyaki_restaurant',
-           'shabu_shabu_restaurant','tempura_restaurant','soba_restaurant','japanese_curry_restaurant'],
-    words:['定食','和食','天ぷら','てんぷら','とんかつ','トンカツ','うどん','そば','蕎麦',
-           'うなぎ','鰻','焼鳥','焼き鳥','やきとり','しゃぶしゃぶ','すき焼き','丼','牛丼','弁当','食堂'] },
+  { id:'yakiniku', label:'焼肉', icon:'🥩',
+    types:['barbecue_restaurant','korean_restaurant','brazilian_restaurant'],
+    words:['焼肉','焼き肉','ホルモン','カルビ','牛角','大将軍'] },
 
   { id:'chuka', label:'中華', icon:'🥟',
     types:['chinese_restaurant','asian_restaurant'],
