@@ -1445,6 +1445,7 @@ toggleOriginPicker();
 eq('押すと切替パネルが開く', ORIGIN_OPEN, true);
 ok('パネルに現在地を使うボタンがある', VIEWS.find().includes('現在地を使う'));
 ok('パネルに駅名検索の欄がある',       VIEWS.find().includes('駅名やエリア名で探す'));
+ok('検索ボタンは出さない（決定で直接一覧へ）', !/<button[^>]*>検索<\/button>/.test(VIEWS.find()));
 toggleOriginPicker();
 eq('もう一度押すと閉じる', ORIGIN_OPEN, false);
 
@@ -1460,6 +1461,7 @@ eq('選ぶとパネルが閉じる',     ORIGIN_OPEN, false);
 /* 駅名やエリア名を検索して起点にする（07-places.js の searchPlace を使うだけで、
    ここから直接 fetch はしない） */
 DB.settings.usage = { date: today(), n: 0 };
+TAB = 'find';
 plan({ body:{ places:[PJ({ displayName:{text:'渋谷駅'},
                           location:{ latitude:35.6580, longitude:139.7016 } })] } });
 await searchOriginByName('渋谷駅');
@@ -1468,15 +1470,19 @@ near('緯度も入る',           POS.lat, 35.658, 0.001);
 eq('使用回数が1増える',      DB.settings.usage.n, 1);
 eq('検索後はパネルが閉じる', ORIGIN_OPEN, false);
 eq('前回の位置としても記憶される', DB.settings.lastPos.lat, POS.lat);
+eq('見つかったらボタンを押さず結果画面へ直行する', TAB, 'result');
 
 /* 変わってはいけないケース */
 const before = POS;
+TAB = 'find';
 await searchOriginByName('');
 eq('空文字では何もしない', POS, before);
+eq('空文字では画面も移らない', TAB, 'find');
 
 plan({ body:{ places:[] } });
 await searchOriginByName('存在しない場所');
 eq('0件なら起点を変えない', POS, before);
+eq('0件なら結果画面へは行かない', TAB, 'find');
 
 window.__alerts = [];
 DB.settings.apiKey = '';
@@ -1500,7 +1506,9 @@ plan({ body:{ places:[PJ({ displayName:{text:'新宿駅'},
                           location:{ latitude:35.6896, longitude:139.7006 } })] } });
 await doOriginSearch();
 eq('検索欄の値が使われる', POS.label, '新宿駅');
+eq('決定だけで結果画面へ直行する', TAB, 'result');
 
+TAB = 'find';
 POS = null; GEO = 'idle'; ORIGIN_OPEN = false; DB.settings.places = [];
 
 window.fetch = realFetch;

@@ -68,7 +68,8 @@ function usePlace(id){
 
 /** 駅名やエリア名で地点を検索し、そのまま検索の起点にする（Places APIを1回だけ使う）。
     店の位置取得と同じ 07-places.js の searchPlace() を呼ぶだけで、
-    ここから直接 fetch はしない（API を叩く箇所を1つに保つため） */
+    ここから直接 fetch はしない（API を叩く箇所を1つに保つため）。
+    見つかったら、ボタンを押さず結果一覧まで直行する（駅名入力が主な使い方のため） */
 async function searchOriginByName(q){
   const query = String(q||'').trim();
   if(!query) return;
@@ -80,6 +81,7 @@ async function searchOriginByName(q){
   if(quotaLeft() <= 0){ alert('本日のAPI利用上限に達しています。日付が変わるとまた使えます。'); return; }
 
   ORIGIN_BUSY = true; render();
+  let found = false;
   try{
     const places = await searchPlace(query, '', POS || DB.settings.lastPos);
     const np = places.length ? normPlace(places[0]) : null;
@@ -87,10 +89,13 @@ async function searchOriginByName(q){
     POS = { lat:np.lat, lng:np.lng, acc:0, label: np.name || query };
     GEO = 'ok'; ORIGIN_OPEN = false;
     DB.settings.lastPos = { lat:POS.lat, lng:POS.lng, at:today() };
+    found = true;
   }catch(e){
     alert(typeof apiErrorHint === 'function' ? apiErrorHint(e) : ('検索に失敗しました: ' + e.message));
   }finally{
-    ORIGIN_BUSY = false; save(); render();
+    ORIGIN_BUSY = false; save();
+    if(found) doSearch();        // そのまま結果一覧へ（内部で render 相当の go() を呼ぶ）
+    else render();
   }
 }
 /** 検索欄（#origin-q）の値を読んで searchOriginByName に渡す */
@@ -189,12 +194,12 @@ function originPickerHTML(){
           ${places.map(p => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('')}
         </select>` : ''}
 
-      <label class="lbl">駅名やエリア名で探す<span class="mini">（例: 渋谷駅）</span></label>
-      <form class="row gap" onsubmit="event.preventDefault(); doOriginSearch();">
-        <input id="origin-q" class="fld sm grow" type="text" placeholder="例: 渋谷駅"
+      <label class="lbl">駅名やエリア名で探す<span class="mini">（例: 渋谷駅。決定するとそのまま一覧が開きます）</span></label>
+      <form onsubmit="event.preventDefault(); doOriginSearch();">
+        <input id="origin-q" class="fld" type="search" enterkeyhint="search" placeholder="例: 渋谷駅"
                ${ORIGIN_BUSY?'disabled':''}>
-        <button type="button" ${ORIGIN_BUSY?'disabled':''} onclick="doOriginSearch()">${ORIGIN_BUSY?'検索中…':'検索'}</button>
       </form>
+      ${ORIGIN_BUSY ? '<p class="mini">検索中…</p>' : ''}
       ${DB.settings.apiKey ? ''
         : `<p class="mini">駅名検索にはAPIキーの設定が必要です（<a onclick="go('set')">設定</a>）。
              キーが無い場合は<a onclick="go('set')">設定</a>から緯度経度で地点を登録することもできます。</p>`}
