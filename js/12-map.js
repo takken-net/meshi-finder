@@ -33,13 +33,10 @@ function drawMap(rows){
   MAP = L.map(el, { zoomControl: true, attributionControl: true });
   L.tileLayer(OSM_URL, { maxZoom: 19, attribution: OSM_ATTR }).addTo(MAP);
 
-  const bounds = [];
-
   /* 現在地（または選んだ起点） */
   if(POS){
     L.marker([POS.lat, POS.lng], { icon: pinHere(), zIndexOffset: 1000, title: POS.label })
       .addTo(MAP).bindPopup(`<b>${esc(POS.label)}</b>`);
-    bounds.push([POS.lat, POS.lng]);
   }
 
   /* 店。営業状態で色を変える */
@@ -48,15 +45,31 @@ function drawMap(rows){
     L.marker([s.lat, s.lng], { icon: pinShop(s), title: s.name })
       .addTo(MAP)
       .bindPopup(popupHTML(r));
-    bounds.push([s.lat, s.lng]);
   }
 
+  const bounds = mapFitPoints(pts, POS);
   if(bounds.length === 1) MAP.setView(bounds[0], 16);
   else MAP.fitBounds(bounds, { padding: [28, 28], maxZoom: 17 });
 
   /* タブを切り替えた直後は入れ物の大きさが確定していないことがあるため、
      一拍おいてから測り直します（地図が灰色のままになるのを防ぐ） */
   setTimeout(() => { if(MAP) MAP.invalidateSize(); }, 60);
+}
+
+/* 地図に収める点を決める。
+   店があれば店を収め、起点（現在地や検索した駅）は店の近く（最も遠い店まで10km以内）に
+   あるときだけ一緒に収める。遠いときは収めない。
+   ―― キーワードで遠くの街の店を探したとき（例: 大阪にいて「小川町」を検索）、
+   起点まで収めようとすると地図が日本全図のようにズームアウトしてしまうため。
+   起点のピン自体は出しておく（画面外にあるだけで、動かせば見える）。 */
+const MAP_FIT_ORIGIN_M = 10000;
+function mapFitPoints(pts, pos){
+  const b = (pts || []).map(r => [r.s.lat, r.s.lng]);
+  if(pos && pos.lat != null){
+    const far = (pts || []).reduce((m, r) => Math.max(m, haversine(pos, r.s) ?? 0), 0);
+    if(!b.length || far <= MAP_FIT_ORIGIN_M) b.push([pos.lat, pos.lng]);
+  }
+  return b;
 }
 
 /* 画像を使わず CSS だけでピンを作ります（読み込みが速く、色を変えやすい）。

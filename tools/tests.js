@@ -1591,6 +1591,33 @@ POS = { lat:35.6812, lng:139.7671, acc:0, label:'現在地' };
 noThrow('起点だけでも描画できる', () => render());
 ok('起点だけでも地図は出る', MAP !== null);
 
+/* 地図に収める点の決め方（mapFitPoints）
+   店があれば店を収め、起点は店の近く（10km以内）のときだけ加える。
+   大阪にいて「小川町」をキーワード検索したとき、起点（大阪）まで収めようとして
+   日本全図のようにズームアウトしてしまうのを防ぐため */
+const OSAKA = { lat:34.7024, lng:135.4959 };
+const tokyoRows = [
+  { s: newShop({ name:'A', lat:35.6812, lng:139.7671 }) },
+  { s: newShop({ name:'B', lat:35.6900, lng:139.7000 }) },
+];
+eq('起点が無ければ店だけ',            mapFitPoints(tokyoRows, null).length, 2);
+eq('起点が店の近くなら起点も収める',   mapFitPoints(tokyoRows, { lat:35.68, lng:139.75 }).length, 3);
+eq('起点が遠い（大阪↔東京）なら起点は収めない', mapFitPoints(tokyoRows, OSAKA).length, 2);
+ok('遠い起点は収める点に含まれない',
+   !mapFitPoints(tokyoRows, OSAKA).some(([la,ln]) => la === OSAKA.lat && ln === OSAKA.lng));
+eq('店が無ければ起点だけ',            mapFitPoints([], OSAKA).length, 1);
+eq('店も起点も無ければ空',            mapFitPoints([], null).length, 0);
+
+/* 通しで: 大阪が起点のまま東京の店だけ出すと、地図は東京の方を向く */
+DB = seed(); migrate();
+putShop(newShop({ name:'小川町の店', lat:35.6954, lng:139.7665 }));
+POS = OSAKA; GEO = 'ok';
+TAB = 'result'; SEL.sub = 'map';
+noThrow('遠い起点でも描画できる', () => render());
+const mapCenter = MAP.getCenter();
+ok('地図の中心は店（東京）側に寄る', Math.abs(mapCenter.lng - 139.7665) < Math.abs(mapCenter.lng - OSAKA.lng));
+eq('起点のピン自体は出す',  ($('#map').innerHTML.match(/pin here/g) || []).length, 1);
+
 TAB = 'find'; render();
 SEL.sub = ''; POS = null; GEO = 'idle';
 Q = { genres:[], kw:'', openOnly:false, radius:0, list:'' };
