@@ -194,21 +194,56 @@ select.fld{ appearance:none; padding-right:28px;
 .origin-pick > button, .origin-pick > select.fld, .origin-pick > form{ display:block; width:100%; margin-top:8px; }
 .origin-pick > button:first-child{ margin-top:0; }
 
-/* ---------- 地図のピン ---------- */
+/* ---------- 地図のピン ----------
+   伝統的な「しずく形」はそのまま使いつつ、営業状態の色を全体に敷いて
+   一目で分かるようにし、中央に白い円バッジを置いてジャンルの絵文字を
+   くっきり見せる（しずく本体の色がどれだけ濃くても絵文字が埋もれない）。
+   出現時に小さくポップするアニメーションを付けて、置かれた感を出す。 */
 .pin{
-  width:30px; height:30px; border-radius:50% 50% 50% 4px;
-  transform:rotate(-45deg);
+  width:34px; height:34px; border-radius:50% 50% 50% 4px;
+  transform:rotate(-45deg) scale(0);
   display:flex; align-items:center; justify-content:center;
-  font-size:15px; background:var(--card);
-  border:2px solid var(--na); box-shadow:0 2px 6px #0004;
+  background:var(--pin-c, var(--na));
+  box-shadow:0 3px 10px rgba(0,0,0,.32), inset 0 1px 2px rgba(255,255,255,.4);
+  animation:pin-pop .32s cubic-bezier(.34,1.56,.64,1) both;
 }
-.pin > *{ transform:rotate(45deg); }
-.pin.open{ border-color:var(--ok); }
-.pin.closed{ border-color:var(--na); opacity:.6; }
-.pin.unknown{ border-color:var(--sub); }
+.pin .pin-dot{
+  width:22px; height:22px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--card);
+  box-shadow:0 1px 3px rgba(0,0,0,.22);
+  transform:rotate(45deg);
+  font-size:14px; line-height:1;
+}
+.pin.open{ --pin-c:var(--ok); }
+.pin.closed{ --pin-c:var(--na); opacity:.6; }
+.pin.unknown{ --pin-c:var(--sub); }
+@keyframes pin-pop{
+  from{ transform:rotate(-45deg) scale(0); }
+  60%{  transform:rotate(-45deg) scale(1.12); }
+  to{   transform:rotate(-45deg) scale(1); }
+}
+
+/* 現在地（起点）のピン。常時ふわっと広がる輪で「ここにいる」感を出す */
 .pin.here{
-  width:18px; height:18px; border-radius:50%; transform:none;
-  background:#2f6fe0; border:3px solid #fff; box-shadow:0 0 0 3px #2f6fe055;
+  width:20px; height:20px; border-radius:50%; transform:none; animation:none;
+  background:radial-gradient(circle at 34% 30%, #6d9bf2, #2f6fe0 72%);
+  border:3px solid #fff;
+  box-shadow:0 2px 8px rgba(0,0,0,.32);
+  position:relative;
+}
+.pin.here::after{
+  content:''; position:absolute; inset:-11px; border-radius:50%;
+  border:2px solid #2f6fe0;
+  animation:pin-here-pulse 2.4s ease-out infinite;
+}
+@keyframes pin-here-pulse{
+  0%{   transform:scale(.3); opacity:.6; }
+  100%{ transform:scale(1.7); opacity:0; }
+}
+@media (prefers-reduced-motion: reduce){
+  .pin{ animation:none; transform:rotate(-45deg); }
+  .pin.here::after{ animation:none; display:none; }
 }
 .leaflet-popup-content .pop b{ font-size:14px; }
 .leaflet-popup-content .poprow{ display:flex; gap:12px; margin-top:6px; }

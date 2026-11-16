@@ -59,22 +59,23 @@ function drawMap(rows){
   setTimeout(() => { if(MAP) MAP.invalidateSize(); }, 60);
 }
 
-/* 画像を使わず CSS だけでピンを作ります（読み込みが速く、色を変えやすい） */
+/* 画像を使わず CSS だけでピンを作ります（読み込みが速く、色を変えやすい）。
+   外側のしずく形は営業状態の色、中の白い円バッジにジャンルの絵文字を乗せる */
 function pinShop(s){
   const o = isOpen(s);
   const cls = o === true ? 'open' : o === false ? 'closed' : 'unknown';
   const g = (s.genres || [])[0];
   return L.divIcon({
     className: '',
-    html: `<div class="pin ${cls}">${g ? genreOf(g).icon : '🍴'}</div>`,
-    iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -14],
+    html: `<div class="pin ${cls}"><span class="pin-dot">${g ? genreOf(g).icon : '🍴'}</span></div>`,
+    iconSize: [34, 34], iconAnchor: [17, 17], popupAnchor: [0, -18],
   });
 }
 function pinHere(){
   return L.divIcon({
     className: '',
     html: '<div class="pin here"></div>',
-    iconSize: [18, 18], iconAnchor: [9, 9], popupAnchor: [0, -10],
+    iconSize: [20, 20], iconAnchor: [10, 10], popupAnchor: [0, -12],
   });
 }
 

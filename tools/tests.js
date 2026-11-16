@@ -1539,12 +1539,13 @@ TAB = 'result'; SEL.sub = 'map';
 noThrow('地図タブを描画できる', () => render());
 ok('地図が作られる', MAP !== null);
 ok('地図の入れ物にタイル層が入る', $('#map').innerHTML.includes('leaflet'));
-const pinCount = ($('#map').innerHTML.match(/class="pin/g) || []).length;
+const pinCount = ($('#map').innerHTML.match(/class="pin(?:\s|")/g) || []).length;   // pin-dot（中の円バッジ）は数えない
 eq('座標のある店ぶんのピン＋現在地', pinCount, 3);
 ok('24時間営業は営業中のピンになる', $('#map').innerHTML.includes('pin open'));
 ok('営業時間が不明な店は別のピン',   $('#map').innerHTML.includes('pin unknown'));
 ok('現在地のピンがある',             $('#map').innerHTML.includes('pin here'));
 ok('ピンにジャンルの絵文字が出る',   $('#map').innerHTML.includes('🍺'));
+ok('絵文字は白い円バッジの中に入る', $('#map').innerHTML.includes('class="pin-dot">🍺'));
 
 /* タブを移ると必ず後始末される（残すとイベントが宙に浮いて後で落ちる） */
 TAB = 'find';
