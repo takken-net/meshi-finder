@@ -620,9 +620,20 @@ noThrow('探す画面（取得中）',     () => VIEWS.find());
 GEO = 'ok';
 
 noThrow('結果画面（リスト）', () => VIEWS.result());
+ok('起点があれば範囲の選択欄が出る（リスト表示でも）', VIEWS.result().includes('表示する範囲'));
 SEL.sub = 'map';
 noThrow('結果画面（地図）',   () => VIEWS.result());
+ok('地図表示でも範囲の選択欄が出る', VIEWS.result().includes('表示する範囲'));
 SEL.sub = '';
+
+const posBefore = POS;
+POS = null;
+ok('起点が無ければ範囲の選択欄は出さない', !VIEWS.result().includes('表示する範囲'));
+POS = posBefore;
+
+Q.radius = 840;
+ok('選択欄にいまの範囲が反映される', /value="840"[^>]*selected/.test(VIEWS.result()));
+Q.radius = 0;
 
 ok('結果に2軒出る', (resultListHTML().match(/class="card"/g) || []).length === 2);
 ok('結果に距離が出る', resultListHTML().includes('m<') || resultListHTML().includes('km<'));
@@ -1462,6 +1473,7 @@ eq('選ぶとパネルが閉じる',     ORIGIN_OPEN, false);
    ここから直接 fetch はしない） */
 DB.settings.usage = { date: today(), n: 0 };
 TAB = 'find';
+Q = { genres:[], kw:'', openOnly:false, radius:0, rate:0 };   // 範囲は「すべて」から始める
 plan({ body:{ places:[PJ({ displayName:{text:'渋谷駅'},
                           location:{ latitude:35.6580, longitude:139.7016 } })] } });
 await searchOriginByName('渋谷駅');
@@ -1471,13 +1483,24 @@ eq('使用回数が1増える',      DB.settings.usage.n, 1);
 eq('検索後はパネルが閉じる', ORIGIN_OPEN, false);
 eq('前回の位置としても記憶される', DB.settings.lastPos.lat, POS.lat);
 eq('見つかったらボタンを押さず結果画面へ直行する', TAB, 'result');
+eq('範囲が「すべて」だと徒歩20分に自動で絞る（全国表示を防ぐため）', Q.radius, 1680);
+
+/* すでに自分で範囲を選んでいた場合は、その選択を変えない */
+TAB = 'find';
+Q.radius = 420;   // 徒歩5分を自分で選んでいた体
+plan({ body:{ places:[PJ({ displayName:{text:'新宿駅'},
+                          location:{ latitude:35.6896, longitude:139.7006 } })] } });
+await searchOriginByName('新宿駅');
+eq('自分で選んだ範囲はそのまま', Q.radius, 420);
 
 /* 変わってはいけないケース */
 const before = POS;
 TAB = 'find';
+Q.radius = 0;
 await searchOriginByName('');
 eq('空文字では何もしない', POS, before);
 eq('空文字では画面も移らない', TAB, 'find');
+eq('空文字では範囲も変えない', Q.radius, 0);
 
 plan({ body:{ places:[] } });
 await searchOriginByName('存在しない場所');
@@ -1507,9 +1530,11 @@ plan({ body:{ places:[PJ({ displayName:{text:'新宿駅'},
 await doOriginSearch();
 eq('検索欄の値が使われる', POS.label, '新宿駅');
 eq('決定だけで結果画面へ直行する', TAB, 'result');
+eq('このときも範囲を自動で絞る', Q.radius, 1680);
 
 TAB = 'find';
 POS = null; GEO = 'idle'; ORIGIN_OPEN = false; DB.settings.places = [];
+Q = { genres:[], kw:'', openOnly:false, radius:0, rate:0 };
 
 window.fetch = realFetch;
 DB = seed(); migrate();

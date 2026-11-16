@@ -18,6 +18,13 @@ VIEWS.result = () => {
     <div class="cond">${condHTML()}</div>
     ${hidden ? `<p class="mini">位置が未取得の ${fmt(hidden)} 軒は距離で絞ったため除いています</p>` : ''}
 
+    ${POS ? `
+      <label class="lbl mt">表示する範囲<span class="mini">（${esc(POS.label)}から徒歩で）</span></label>
+      <select class="fld" onchange="Q.radius=num(this.value); render();">
+        ${RADIUS_OPTS.map(([v,l]) =>
+          `<option value="${v}" ${num(Q.radius)===v?'selected':''}>${l}</option>`).join('')}
+      </select>` : ''}
+
     <div class="subtabs mt">
       <button class="${SEL.sub!=='map'?'on':''}" onclick="go('result',{sub:''})">リスト</button>
       <button class="${SEL.sub==='map'?'on':''}" onclick="go('result',{sub:'map'})">地図</button>

@@ -89,6 +89,11 @@ async function searchOriginByName(q){
     POS = { lat:np.lat, lng:np.lng, acc:0, label: np.name || query };
     GEO = 'ok'; ORIGIN_OPEN = false;
     DB.settings.lastPos = { lat:POS.lat, lng:POS.lng, at:today() };
+    /* 範囲が「すべて」のままだと、登録済みの店が全国に散らばっている場合、
+       結果の地図が全国表示になってしまう。駅名検索は「その駅の周辺」が
+       目的のはずなので、まだ絞っていなければ徒歩20分を既定にする
+       （すでに自分で範囲を選んでいた場合は、その選択を尊重して変えない） */
+    if(!Q.radius) Q.radius = 1680;
     found = true;
   }catch(e){
     alert(typeof apiErrorHint === 'function' ? apiErrorHint(e) : ('検索に失敗しました: ' + e.message));
