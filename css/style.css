@@ -152,7 +152,7 @@ select.fld{ appearance:none; padding-right:28px;
 .grow{ flex:1; }
 .sw{ display:flex; align-items:center; gap:8px; min-height:var(--tap); font-size:14px; cursor:pointer; white-space:nowrap; }
 .sw input{ width:20px; height:20px; accent-color:var(--acc); flex:0 0 auto; }
-/* 「今やってる店だけ」と「My評価」を同列に。狭い画面ではチェックボックス側を優先して詰める */
+/* 「営業中」と「My評価」を同列に。狭い画面ではチェックボックス側を優先して詰める */
 .cond-row{ flex-wrap:wrap; }
 .cond-row .sw{ flex:0 0 auto; }
 .cond-row select.fld{ min-width:130px; }

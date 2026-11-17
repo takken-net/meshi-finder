@@ -607,7 +607,7 @@ POS = null; PICK = null; SEL.sub = '';
 
 noThrow('探す画面（起点なし）',   () => VIEWS.find());
 ok('リストの絞り込みは出さない',   !VIEWS.find().includes('取り込み元で絞ります'));
-ok('今やってると My評価が同列',    VIEWS.find().includes('cond-row'));
+ok('営業中と My評価が同列',    VIEWS.find().includes('cond-row'));
 ok('徒歩の範囲がMy評価より上',
    VIEWS.find().indexOf('>徒歩<') < VIEWS.find().indexOf('My評価'));
 POS = { lat:35.6812, lng:139.7671, acc:20, label:'現在地' };
@@ -653,7 +653,7 @@ Q = { genres:['izakaya'], kw:'つけ麺', openOnly:true, radius:840, rate:4 };
 const cond = condHTML();
 ok('条件に ジャンルが出る',   cond.includes('居酒屋'));
 ok('条件に キーワードが出る', cond.includes('つけ麺'));
-ok('条件に 営業中が出る',     cond.includes('今やってる'));
+ok('条件に 営業中が出る',     cond.includes('営業中'));
 ok('条件に 徒歩の範囲が出る', cond.includes('徒歩10分'));
 ok('条件に My評価が出る',     cond.includes('★4以上'));
 Q = { genres:[], kw:'', openOnly:false, radius:0, list:'', rate:0 };

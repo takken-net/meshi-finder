@@ -67,7 +67,7 @@ VIEWS.set = () => `
     <label class="sw"><input type="checkbox" ${DB.settings.unknownHours?'checked':''}
       onchange="DB.settings.unknownHours=this.checked; save(); toast('保存しました')">
       <span>営業時間が分からない店も結果に出す</span></label>
-    <p class="mini">切ると、営業時間を取得できていない店は「今やってる店だけ」で除外されます。</p>
+    <p class="mini">切ると、営業時間を取得できていない店は「営業中」で除外されます。</p>
 
     <h3 class="mt2">よく使う地点</h3>
     <p class="mini">現在地が取れないときの検索の起点にします。自宅や職場を入れておくと便利です。</p>

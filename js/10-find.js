@@ -146,11 +146,11 @@ VIEWS.find = () => {
       <label class="toggle">
         <input type="checkbox" ${Q.openOnly?'checked':''}
           onchange="Q.openOnly=this.checked; updateHits()">
-        <span class="track"></span><span>今やってる店だけ</span>
+        <span class="track"></span><span>営業中</span>
       </label>
       <div class="fsub">
         <span class="flbl inline">My評価</span>
-        <div id="f-rate" class="seg">${rateSegHTML()}</div>
+        <select id="f-rate" class="fld sm" onchange="setRate(this.value)">${rateOptionsHTML()}</select>
       </div>
     </section>
 
@@ -165,11 +165,12 @@ VIEWS.find = () => {
   </div>`;
 };
 
-/* 区切りボタン（セグメント）。選び直したときは、その箱の中身だけ差し替える */
-function rateSegHTML(){
+/* My評価はリストから選ぶ（選択肢が増えても横に溢れないよう select にしている） */
+function rateOptionsHTML(){
   return RATE_OPTS.map(([v,l]) =>
-    `<button type="button" class="${num(Q.rate)===v?'on':''}" onclick="setRate(${v})">${l}</button>`).join('');
+    `<option value="${v}" ${num(Q.rate)===v?'selected':''}>${l}</option>`).join('');
 }
+/* 区切りボタン（セグメント）。選び直したときは、その箱の中身だけ差し替える */
 function radiusSegHTML(){
   return RADIUS_OPTS.map(([v]) =>
     `<button type="button" class="${num(Q.radius)===v?'on':''}" onclick="setRadius(${v})">${v ? walkMin(v)+'分' : 'すべて'}</button>`).join('');
@@ -177,7 +178,6 @@ function radiusSegHTML(){
 const radiusNoteHTML = () => (Q.radius && !POS) ? '起点が決まると、この範囲で絞られます' : '';
 function setRate(v){
   Q.rate = num(v);
-  const el = $('#f-rate'); if(el) el.innerHTML = rateSegHTML();
   updateHits();
 }
 function setRadius(v){

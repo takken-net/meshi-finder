@@ -42,7 +42,7 @@ function condHTML(){
   p.push(POS ? `📍 ${esc(POS.label)}から近い順` : '📍 起点なし（評価順）');
   if(Q.genres.length) p.push(genreLabels(Q.genres).join('・'));
   if(Q.kw)            p.push(`「${esc(Q.kw)}」`);
-  if(Q.openOnly)      p.push('今やってる店');
+  if(Q.openOnly)      p.push('営業中');
   if(Q.rate)          p.push(`★${num(Q.rate)}以上`);
   if(Q.radius && POS) p.push((RADIUS_OPTS.find(([v]) => v === num(Q.radius))||[,''])[1]);
   return p.map(x => `<span class="tag alt">${x}</span>`).join('');
