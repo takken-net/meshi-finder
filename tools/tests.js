@@ -1447,27 +1447,21 @@ API_SHOW = false;
 
    現在地が取れている間も、いつでも別の起点に切り替えられること、
    駅名やエリア名を検索して起点にできることを確認します。
+   パネルは開閉せず、常に（2行で）表示されています。
    ============================================================ */
 DB = seed(); migrate(); DB.settings.apiKey = 'TEST-KEY'; DB.settings.dailyLimit = 100;
-POS = { lat:35.6812, lng:139.7671, acc:20, label:'現在地' }; GEO = 'ok'; ORIGIN_OPEN = false;
+POS = { lat:35.6812, lng:139.7671, acc:20, label:'現在地' }; GEO = 'ok';
 
-ok('現在地取得後も「変える」ボタンが出る', VIEWS.find().includes('変える'));
-toggleOriginPicker();
-eq('押すと切替パネルが開く', ORIGIN_OPEN, true);
-ok('パネルに現在地を使うボタンがある', VIEWS.find().includes('現在地を使う'));
-ok('パネルに駅名検索の欄がある',       VIEWS.find().includes('駅名やエリア名で探す'));
+ok('現在地取得後も起点の切替欄が常に出る', VIEWS.find().includes('現在地を使う'));
+ok('駅名検索の欄が常に出る',       VIEWS.find().includes('駅名やエリア名で探す'));
 ok('検索ボタンは出さない（決定で直接一覧へ）', !/<button[^>]*>検索<\/button>/.test(VIEWS.find()));
-toggleOriginPicker();
-eq('もう一度押すと閉じる', ORIGIN_OPEN, false);
 
 /* 登録済みの地点は、現在地取得済みの状態からでもいつでも選べる */
 DB.settings.places = [{ id:'P1', label:'渋谷駅', lat:35.658, lng:139.702 }];
-ORIGIN_OPEN = true;
 ok('登録地点の選択欄が出る', VIEWS.find().includes('渋谷駅'));
 usePlace('P1');
 eq('地点を選ぶと起点になる',   POS.label, '渋谷駅');
 eq('地点の座標に切り替わる',   POS.lat, 35.658);
-eq('選ぶとパネルが閉じる',     ORIGIN_OPEN, false);
 
 /* 駅名やエリア名を検索して起点にする（07-places.js の searchPlace を使うだけで、
    ここから直接 fetch はしない） */
@@ -1480,7 +1474,6 @@ await searchOriginByName('渋谷駅');
 eq('検索結果が起点になる',   POS.label, '渋谷駅');
 near('緯度も入る',           POS.lat, 35.658, 0.001);
 eq('使用回数が1増える',      DB.settings.usage.n, 1);
-eq('検索後はパネルが閉じる', ORIGIN_OPEN, false);
 eq('前回の位置としても記憶される', DB.settings.lastPos.lat, POS.lat);
 eq('見つかったらボタンを押さず結果画面へ直行する', TAB, 'result');
 eq('範囲が「すべて」だと徒歩20分に自動で絞る（全国表示を防ぐため）', Q.radius, 1680);
@@ -1522,7 +1515,6 @@ ok('上限に達したことを伝える', window.__alerts.some(a => a.includes(
 DB.settings.dailyLimit = 100;
 
 /* 検索欄（本物のDOM）に入れた値がそのまま使われること */
-ORIGIN_OPEN = true;
 $('#view').innerHTML = VIEWS.find();
 $('#origin-q').value = '新宿駅';
 plan({ body:{ places:[PJ({ displayName:{text:'新宿駅'},
@@ -1533,7 +1525,7 @@ eq('決定だけで結果画面へ直行する', TAB, 'result');
 eq('このときも範囲を自動で絞る', Q.radius, 1680);
 
 TAB = 'find';
-POS = null; GEO = 'idle'; ORIGIN_OPEN = false; DB.settings.places = [];
+POS = null; GEO = 'idle'; DB.settings.places = [];
 Q = { genres:[], kw:'', openOnly:false, radius:0, rate:0 };
 
 window.fetch = realFetch;

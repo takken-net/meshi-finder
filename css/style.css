@@ -189,10 +189,13 @@ select.fld{ appearance:none; padding-right:28px;
   .tag.soon{ background:#3a2c14; }
 }
 .note.ok{ border-color:var(--ok); }
-/* 起点の切替パネル（探す画面）専用。中のボタン・選択欄・検索フォームを縦に並べる。
-   バッジ側の .note（現在地表示など）は影響を受けないよう、専用クラスに限定している */
-.origin-pick > button, .origin-pick > select.fld, .origin-pick > form{ display:block; width:100%; margin-top:8px; }
-.origin-pick > button:first-child{ margin-top:0; }
+/* 起点の切替（探す画面）専用。常に表示し、2行にコンパクトへ収める：
+   1行目＝現在地ボタン＋登録地点の選択欄、2行目＝駅名やエリア名の検索欄 */
+.origin-pick{ display:flex; flex-direction:column; gap:8px; }
+.origin-pick .row{ gap:8px; }
+.origin-pick .row button{ flex:0 0 auto; }
+.origin-pick .row select.fld{ flex:1; min-width:0; }
+.origin-pick form.search{ margin:0; }
 
 /* ---------- 地図のピン ----------
    伝統的な「しずく形」はそのまま使いつつ、営業状態の色を全体に敷いて
@@ -305,7 +308,7 @@ details[open] summary{ color:var(--ink); }
 .find .seg{ display:flex; flex:1; padding:3px; border-radius:999px; background:var(--line); }
 .find .seg button{ flex:1; min-height:34px; padding:0 6px; border:0; border-radius:999px; background:none; color:var(--sub); font-size:13px; white-space:nowrap; }
 .find .seg button.on{ background:var(--card); color:var(--ink); font-weight:700; box-shadow:0 1px 3px rgba(0,0,0,.14); }
-.find .note.ok{ border-radius:999px; padding:8px 8px 8px 16px; }
+.find .note.ok{ border-radius:999px; padding:8px 16px; }
 
 .toggle{ position:relative; display:inline-flex; align-items:center; gap:10px; min-height:var(--tap); cursor:pointer; font-size:14px; white-space:nowrap; }
 .toggle input{ position:absolute; opacity:0; width:0; height:0; }

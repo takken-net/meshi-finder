@@ -6,7 +6,6 @@ let POS    = null;            // 検索の起点 { lat, lng, acc, label }
 let GEO    = 'idle';          // idle | loading | ok | deny | fail
 let GEOERR = '';
 let PICK   = null;            // ルーレットで選ばれた店
-let ORIGIN_OPEN = false;      // 起点の切替パネルを開いているか
 let ORIGIN_BUSY = false;      // 駅名などの検索中か
 
 /* 歩いて行ける範囲（時速5kmで換算。5分≒420m）。0 は絞らない */
@@ -35,7 +34,7 @@ function locate(){
     p => {
       POS = { lat:p.coords.latitude, lng:p.coords.longitude,
               acc:Math.round(p.coords.accuracy||0), label:'現在地' };
-      GEO = 'ok'; ORIGIN_OPEN = false;
+      GEO = 'ok';
       DB.settings.lastPos = { lat:POS.lat, lng:POS.lng, at:today() };
       save(); render();
     },
@@ -44,25 +43,22 @@ function locate(){
       GEOERR = (e && e.code === 1)
         ? '位置情報の利用が許可されていません'
         : '現在地を取得できませんでした';
-      render();               // 失敗時はパネルを開いたままにして他の起点を選べるようにする
+      render();
     },
     { enableHighAccuracy:true, timeout:10000, maximumAge:60000 }
   );
 }
-
-/** 起点の切替パネルを開閉する。現在地が取れているときも、駅名検索などに切り替えられるように */
-function toggleOriginPicker(){ ORIGIN_OPEN = !ORIGIN_OPEN; render(); }
 
 /** 登録しておいた地点を起点にする */
 function usePlace(id){
   if(!id){ POS = null; GEO = 'idle'; render(); return; }
   if(id === '__last'){
     const p = DB.settings.lastPos;
-    if(p){ POS = { lat:p.lat, lng:p.lng, acc:0, label:`前回の位置（${p.at}）` }; GEO = 'ok'; ORIGIN_OPEN = false; }
+    if(p){ POS = { lat:p.lat, lng:p.lng, acc:0, label:`前回の位置（${p.at}）` }; GEO = 'ok'; }
     render(); return;
   }
   const p = (DB.settings.places||[]).find(x => x.id === id);
-  if(p){ POS = { lat:p.lat, lng:p.lng, acc:0, label:p.label }; GEO = 'ok'; ORIGIN_OPEN = false; }
+  if(p){ POS = { lat:p.lat, lng:p.lng, acc:0, label:p.label }; GEO = 'ok'; }
   render();
 }
 
@@ -87,7 +83,7 @@ async function searchOriginByName(q){
     const np = places.length ? normPlace(places[0]) : null;
     if(!np || np.lat == null){ toast('見つかりませんでした'); return; }
     POS = { lat:np.lat, lng:np.lng, acc:0, label: np.name || query };
-    GEO = 'ok'; ORIGIN_OPEN = false;
+    GEO = 'ok';
     DB.settings.lastPos = { lat:POS.lat, lng:POS.lng, at:today() };
     /* 範囲が「すべて」のままだと、登録済みの店が全国に散らばっている場合、
        結果の地図が全国表示になってしまう。駅名検索は「その駅の周辺」が
@@ -188,52 +184,43 @@ function setRadius(v){
 }
 
 function posCardHTML(){
-  return posBadgeHTML() + (ORIGIN_OPEN ? originPickerHTML() : '');
+  return posBadgeHTML() + originPickerHTML();
 }
 
-/** いまの起点の状態。「変える」で常にパネルを開けるようにする
-    （現在地の取得が成功していても、駅名など別の起点に切り替えたいことがあるため） */
+/** いまの起点の状態だけを表す（切り替えは下の origin-pick から常にできる） */
 function posBadgeHTML(){
   if(GEO === 'loading')
     return `<div class="note">現在地を確認しています…</div>`;
 
   if(GEO === 'ok' && POS)
-    return `<div class="note ok row between">
-      <span>📍 ${esc(POS.label)}</span>
-      <button class="ghost sm" onclick="toggleOriginPicker()">${ORIGIN_OPEN?'閉じる':'変える'}</button>
-    </div>`;
+    return `<div class="note ok"><span>📍 ${esc(POS.label)}</span></div>`;
 
   if(GEO === 'deny' || GEO === 'fail')
-    return `<div class="note warn row between">
-      <span>${esc(GEOERR)}</span>
-      <button class="ghost sm" onclick="toggleOriginPicker()">${ORIGIN_OPEN?'閉じる':'地点を選ぶ'}</button>
-    </div>`;
+    return `<div class="note warn"><span>${esc(GEOERR)}</span></div>`;
 
-  return `<div class="note row between">
-    <span class="mini">現在地はまだ取得していません</span>
-    <button class="sm" onclick="toggleOriginPicker()">${ORIGIN_OPEN?'閉じる':'地点を選ぶ'}</button>
-  </div>`;
+  return `<div class="note"><span class="mini">現在地はまだ取得していません</span></div>`;
 }
 
-/** 起点の切替パネル。現在地・登録済みの地点・駅名やエリア名の検索の3通り */
+/** 起点の切替。開閉せず常に表示し、2行にまとめる：
+    1行目＝現在地ボタン＋登録済みの地点、2行目＝駅名やエリア名の検索 */
 function originPickerHTML(){
   const places = DB.settings.places || [];
   const hasLast = !!DB.settings.lastPos;
   return `
     <div class="note origin-pick mt">
-      <button onclick="locate()">📍 現在地を使う</button>
-
-      ${(places.length || hasLast) ? `
-        <select class="fld sm mt" onchange="usePlace(this.value)">
-          <option value="">登録した地点から選ぶ…</option>
-          ${hasLast ? `<option value="__last">前回の位置（${esc(DB.settings.lastPos.at)}）</option>` : ''}
-          ${places.map(p => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('')}
-        </select>` : ''}
-
-      <h3 class="flbl">駅名やエリア名で探す</h3>
-      <form onsubmit="event.preventDefault(); doOriginSearch();">
-        <input id="origin-q" class="fld" type="search" enterkeyhint="search" placeholder="例: 渋谷駅"
-               ${ORIGIN_BUSY?'disabled':''}>
+      <div class="row">
+        <button class="sm" onclick="locate()">📍 現在地を使う</button>
+        ${(places.length || hasLast) ? `
+          <select class="fld sm" onchange="usePlace(this.value)">
+            <option value="">登録した地点から選ぶ…</option>
+            ${hasLast ? `<option value="__last">前回の位置（${esc(DB.settings.lastPos.at)}）</option>` : ''}
+            ${places.map(p => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('')}
+          </select>` : ''}
+      </div>
+      <form class="search mt" onsubmit="event.preventDefault(); doOriginSearch();">
+        <span class="ico">🔍</span>
+        <input id="origin-q" class="fld" type="search" enterkeyhint="search"
+               placeholder="駅名やエリア名で探す（例: 渋谷駅）" ${ORIGIN_BUSY?'disabled':''}>
       </form>
       ${ORIGIN_BUSY ? '<p class="mini">検索中…</p>' : ''}
       ${DB.settings.apiKey ? ''
