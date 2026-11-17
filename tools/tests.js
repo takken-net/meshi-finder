@@ -608,8 +608,8 @@ POS = null; PICK = null; SEL.sub = '';
 noThrow('探す画面（起点なし）',   () => VIEWS.find());
 ok('リストの絞り込みは出さない',   !VIEWS.find().includes('取り込み元で絞ります'));
 ok('今やってると My評価が同列',    VIEWS.find().includes('cond-row'));
-ok('探すボタンが徒歩範囲より上',
-   VIEWS.find().indexOf('この条件で探す') < VIEWS.find().indexOf('歩いて行ける範囲'));
+ok('徒歩の範囲がMy評価より上',
+   VIEWS.find().indexOf('>徒歩<') < VIEWS.find().indexOf('My評価'));
 POS = { lat:35.6812, lng:139.7671, acc:20, label:'現在地' };
 GEO = 'ok';
 noThrow('探す画面（起点あり）',   () => VIEWS.find());

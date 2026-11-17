@@ -134,6 +134,14 @@ VIEWS.find = () => {
       </div>
     </section>
 
+    <section class="fsec">
+      <div class="fsub">
+        <span class="flbl inline">徒歩</span>
+        <div id="f-radius" class="seg">${radiusSegHTML()}</div>
+      </div>
+      <p id="f-radius-note" class="mini">${radiusNoteHTML()}</p>
+    </section>
+
     <section class="fsec cond-row">
       <label class="toggle">
         <input type="checkbox" ${Q.openOnly?'checked':''}
@@ -150,12 +158,6 @@ VIEWS.find = () => {
       <button class="pri big" onclick="doSearch()">この条件で探す<span id="hit" class="cnt">${hitLabel(n)}</span></button>
       <button class="big outline" onclick="doRoulette()">🎲 おまかせ1軒</button>
     </div>
-
-    <section class="fsec">
-      <h3 class="flbl">歩いて行ける範囲</h3>
-      <div id="f-radius" class="seg">${radiusSegHTML()}</div>
-      <p id="f-radius-note" class="mini">${radiusNoteHTML()}</p>
-    </section>
 
     ${DB.shops.length ? '' : `<div class="note mt">
       まだ店が登録されていません。<a onclick="go('shops')">お店タブ</a>で追加するか、
