@@ -17,7 +17,7 @@ const RADIUS_OPTS = [
   [0,    '30分以上もOK（すべて）'],
 ];
 /* My評価（★の数）での絞り込み */
-const RATE_OPTS = [[0,'指定なし'],[3,'★3以上'],[4,'★4以上'],[5,'★5のみ']];
+const RATE_OPTS = [[0,'すべて'],[3,'★3以上'],[4,'★4以上'],[5,'★5']];
 
 /** いまの条件で該当する店（近い順） */
 const currentRows = () => searchShops(Q, POS, null);
@@ -117,44 +117,73 @@ AFTER.find = () => { if(GEO === 'idle' && !POS) locate(); };
 VIEWS.find = () => {
   const n = currentRows().length;
   return `
-  <div class="pad">
+  <div class="pad find">
     ${posCardHTML()}
 
-    <label class="lbl">何が食べたい？<span class="mini">（複数選べます。選ばなければ全部）</span></label>
-    <div id="f-genres" class="chips">${findGenreChips()}</div>
+    <section class="fsec">
+      <h3 class="flbl">何が食べたい？</h3>
+      <div id="f-genres" class="chips">${findGenreChips()}</div>
+    </section>
 
-    <label class="lbl">キーワード<span class="mini">（店名・メモ・タグから探します）</span></label>
-    <input id="f-kw" class="fld" type="search" placeholder="例: つけ麺　一人向き"
-           value="${esc(Q.kw)}" oninput="onFindKw(this.value)">
+    <section class="fsec">
+      <h3 class="flbl">キーワード</h3>
+      <div class="search">
+        <span class="ico">🔍</span>
+        <input id="f-kw" class="fld" type="search" placeholder="つけ麺、一人向き、新宿 …"
+               value="${esc(Q.kw)}" oninput="onFindKw(this.value)">
+      </div>
+    </section>
 
-    <div class="row gap mt cond-row">
-      <label class="sw"><input type="checkbox" ${Q.openOnly?'checked':''}
-        onchange="Q.openOnly=this.checked; updateHits()"><span>今やってる店だけ</span></label>
-      <select class="fld sm grow" onchange="Q.rate=num(this.value); updateHits()">
-        ${RATE_OPTS.map(([v,l]) =>
-          `<option value="${v}" ${num(Q.rate)===v?'selected':''}>My評価 ${l}</option>`).join('')}
-      </select>
+    <section class="fsec cond-row">
+      <label class="toggle">
+        <input type="checkbox" ${Q.openOnly?'checked':''}
+          onchange="Q.openOnly=this.checked; updateHits()">
+        <span class="track"></span><span>今やってる店だけ</span>
+      </label>
+      <div class="fsub">
+        <span class="flbl inline">My評価</span>
+        <div id="f-rate" class="seg">${rateSegHTML()}</div>
+      </div>
+    </section>
+
+    <div class="cta">
+      <button class="pri big" onclick="doSearch()">この条件で探す<span id="hit" class="cnt">${hitLabel(n)}</span></button>
+      <button class="big outline" onclick="doRoulette()">🎲 おまかせ1軒</button>
     </div>
 
-    <div class="hit" id="hit">${hitLabel(n)}</div>
-
-    <div class="row gap">
-      <button class="pri grow" onclick="doSearch()">この条件で探す</button>
-      <button class="grow" onclick="doRoulette()">🎲 おまかせ1軒</button>
-    </div>
-
-    <label class="lbl mt2">歩いて行ける範囲<span class="mini">（時速5kmで計算）</span></label>
-    <select class="fld" onchange="Q.radius=num(this.value); updateHits()">
-      ${RADIUS_OPTS.map(([v,l]) =>
-        `<option value="${v}" ${num(Q.radius)===v?'selected':''}>${l}</option>`).join('')}
-    </select>
-    ${(Q.radius && !POS) ? '<p class="mini">※ 起点が決まっていないため範囲は使われません</p>' : ''}
+    <section class="fsec">
+      <h3 class="flbl">歩いて行ける範囲</h3>
+      <div id="f-radius" class="seg">${radiusSegHTML()}</div>
+      <p id="f-radius-note" class="mini">${radiusNoteHTML()}</p>
+    </section>
 
     ${DB.shops.length ? '' : `<div class="note mt">
       まだ店が登録されていません。<a onclick="go('shops')">お店タブ</a>で追加するか、
       <a onclick="go('data')">取込タブ</a>から Google マップの CSV を読み込んでください。</div>`}
   </div>`;
 };
+
+/* 区切りボタン（セグメント）。選び直したときは、その箱の中身だけ差し替える */
+function rateSegHTML(){
+  return RATE_OPTS.map(([v,l]) =>
+    `<button type="button" class="${num(Q.rate)===v?'on':''}" onclick="setRate(${v})">${l}</button>`).join('');
+}
+function radiusSegHTML(){
+  return RADIUS_OPTS.map(([v]) =>
+    `<button type="button" class="${num(Q.radius)===v?'on':''}" onclick="setRadius(${v})">${v ? walkMin(v)+'分' : 'すべて'}</button>`).join('');
+}
+const radiusNoteHTML = () => (Q.radius && !POS) ? '起点が決まると、この範囲で絞られます' : '';
+function setRate(v){
+  Q.rate = num(v);
+  const el = $('#f-rate'); if(el) el.innerHTML = rateSegHTML();
+  updateHits();
+}
+function setRadius(v){
+  Q.radius = num(v);
+  const el = $('#f-radius'); if(el) el.innerHTML = radiusSegHTML();
+  const nt = $('#f-radius-note'); if(nt) nt.textContent = radiusNoteHTML();
+  updateHits();
+}
 
 function posCardHTML(){
   return posBadgeHTML() + (ORIGIN_OPEN ? originPickerHTML() : '');
@@ -168,7 +197,7 @@ function posBadgeHTML(){
 
   if(GEO === 'ok' && POS)
     return `<div class="note ok row between">
-      <span>📍 ${esc(POS.label)}${POS.acc ? `<span class="mini">（誤差およそ ±${fmt(POS.acc)}m）</span>` : ''}</span>
+      <span>📍 ${esc(POS.label)}</span>
       <button class="ghost sm" onclick="toggleOriginPicker()">${ORIGIN_OPEN?'閉じる':'変える'}</button>
     </div>`;
 
@@ -199,7 +228,7 @@ function originPickerHTML(){
           ${places.map(p => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('')}
         </select>` : ''}
 
-      <label class="lbl">駅名やエリア名で探す<span class="mini">（例: 渋谷駅。決定するとそのまま一覧が開きます）</span></label>
+      <h3 class="flbl">駅名やエリア名で探す</h3>
       <form onsubmit="event.preventDefault(); doOriginSearch();">
         <input id="origin-q" class="fld" type="search" enterkeyhint="search" placeholder="例: 渋谷駅"
                ${ORIGIN_BUSY?'disabled':''}>
@@ -232,9 +261,7 @@ function toggleGenre(id){
 function updateHits(){
   const el = $('#hit'); if(el) el.innerHTML = hitLabel(currentRows().length);
 }
-const hitLabel = n => n
-  ? `該当 <b>${fmt(n)}</b> 軒`
-  : `<span class="na">該当する店がありません</span>`;
+const hitLabel = n => `${fmt(n)}軒`;
 
 function doSearch(){
   PICK = null;

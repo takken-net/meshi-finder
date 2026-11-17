@@ -279,6 +279,38 @@ button[disabled]{ opacity:.45; }
 details summary{ cursor:pointer; padding:8px 0; color:var(--sub); }
 details[open] summary{ color:var(--ink); }
 
+/* ---------- 探す画面（スタイリッシュ版） ----------
+   説明書きは置かず、小さな見出し・丸いセグメント・トグル・大きな主ボタンで組む。
+   .find の中だけに効かせ、他の画面の見た目は変えない */
+.find .fsec{ margin-top:22px; }
+.find .flbl{ margin:0 0 10px; font-size:12px; font-weight:700; letter-spacing:.08em; color:var(--sub); }
+.find .flbl.inline{ margin:0 10px 0 0; white-space:nowrap; }
+.find .chips{ gap:8px; }
+.find .chip{ min-height:40px; padding:0 14px; font-size:14px; }
+.find .chip b{ font-size:11px; margin-left:6px; }
+.find .search{ position:relative; }
+.find .search .ico{ position:absolute; left:15px; top:50%; transform:translateY(-50%); font-size:15px; opacity:.55; pointer-events:none; }
+.find .search .fld{ padding-left:44px; border-radius:999px; }
+.find .cond-row{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.find .fsub{ display:flex; align-items:center; flex:1; min-width:210px; }
+.find .seg{ display:flex; flex:1; padding:3px; border-radius:999px; background:var(--line); }
+.find .seg button{ flex:1; min-height:34px; padding:0 6px; border:0; border-radius:999px; background:none; color:var(--sub); font-size:13px; white-space:nowrap; }
+.find .seg button.on{ background:var(--card); color:var(--ink); font-weight:700; box-shadow:0 1px 3px rgba(0,0,0,.14); }
+.find .note.ok{ border-radius:999px; padding:8px 8px 8px 16px; }
+
+.toggle{ position:relative; display:inline-flex; align-items:center; gap:10px; min-height:var(--tap); cursor:pointer; font-size:14px; white-space:nowrap; }
+.toggle input{ position:absolute; opacity:0; width:0; height:0; }
+.toggle .track{ width:44px; height:26px; border-radius:999px; background:var(--line); position:relative; flex:0 0 auto; transition:background .2s; }
+.toggle .track::after{ content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.25); transition:left .2s; }
+.toggle input:checked + .track{ background:var(--ok); }
+.toggle input:checked + .track::after{ left:21px; }
+
+.find .cta{ display:flex; flex-direction:column; gap:10px; margin-top:24px; }
+.find .cta button.big{ min-height:54px; font-size:16px; border-radius:16px; }
+.find .cta button.pri.big{ box-shadow:0 6px 18px rgba(192,57,43,.28); }
+.find .cta button.outline{ background:var(--card); border:1.5px solid var(--line); color:var(--ink); }
+.find .cnt{ margin-left:10px; padding:2px 10px; border-radius:999px; background:rgba(255,255,255,.22); font-size:13px; font-weight:700; }
+
 /* ---------- トースト ---------- */
 #toast{
   position:fixed; left:50%; bottom:calc(78px + env(safe-area-inset-bottom));
