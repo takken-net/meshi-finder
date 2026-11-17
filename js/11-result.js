@@ -12,7 +12,7 @@ VIEWS.result = () => {
   <div class="pad">
     <div class="row between mb">
       <h2>結果 <span class="mini">${fmt(rows.length)} 軒</span></h2>
-      <button class="ghost" onclick="go('find')">条件を変える</button>
+      <button class="cond-edit" onclick="go('find')">🔁 条件を変える</button>
     </div>
 
     <div class="cond">${condHTML()}</div>
@@ -92,7 +92,7 @@ function pickHTML(){
   <div class="pad">
     <div class="row between mb">
       <h2>🎲 今日はここ</h2>
-      <button class="ghost" onclick="go('find')">条件を変える</button>
+      <button class="cond-edit" onclick="go('find')">🔁 条件を変える</button>
     </div>
 
     <div class="pick">

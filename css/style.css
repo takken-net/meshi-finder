@@ -262,6 +262,15 @@ ol.steps li{ margin:4px 0; }
   display:inline-flex; align-items:center; text-decoration:none;
 }
 .tag.lnk:active{ background:var(--acc-w); }
+
+/* 結果画面の「条件を変える」。ここから検索条件を見直せることが一目でわかるよう、
+   丸い枠でくっきり囲んで強調する */
+button.cond-edit{
+  border:2px solid var(--acc); border-radius:999px;
+  background:var(--acc-w); color:var(--acc); font-weight:700;
+  padding:0 16px; min-height:40px; font-size:13px; white-space:nowrap;
+}
+button.cond-edit:active{ background:var(--acc); color:#fff; }
 .card.off{ opacity:.45; }
 .card .sw{ min-height:0; gap:8px; }
 
