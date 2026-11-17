@@ -156,7 +156,7 @@ VIEWS.find = () => {
 
     <div class="cta">
       <button class="pri big" onclick="doSearch()">この条件で探す<span id="hit" class="cnt">${hitLabel(n)}</span></button>
-      <button class="big outline" onclick="doRoulette()">🎲 おまかせ1軒</button>
+      <button class="big outline" onclick="doRoulette()">🎲 おまかせガチャ</button>
     </div>
 
     ${DB.shops.length ? '' : `<div class="note mt">
