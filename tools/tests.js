@@ -615,6 +615,7 @@ GEO = 'ok';
 noThrow('探す画面（起点あり）',   () => VIEWS.find());
 GEO = 'deny'; GEOERR = '位置情報の利用が許可されていません';
 noThrow('探す画面（位置を拒否）', () => VIEWS.find());
+ok('拒否の理由が現在地ボタンの下に出る', VIEWS.find().includes('位置情報の利用が許可されていません'));
 GEO = 'loading';
 noThrow('探す画面（取得中）',     () => VIEWS.find());
 GEO = 'ok';
@@ -1452,9 +1453,13 @@ API_SHOW = false;
 DB = seed(); migrate(); DB.settings.apiKey = 'TEST-KEY'; DB.settings.dailyLimit = 100;
 POS = { lat:35.6812, lng:139.7671, acc:20, label:'現在地' }; GEO = 'ok';
 
-ok('現在地取得後も起点の切替欄が常に出る', VIEWS.find().includes('現在地を使う'));
+ok('現在地取得後は選択中であることが分かる', VIEWS.find().includes('現在地（選択中）'));
 ok('駅名検索の欄が常に出る',       VIEWS.find().includes('駅名やエリア名で探す'));
 ok('検索ボタンは出さない（決定で直接一覧へ）', !/<button[^>]*>検索<\/button>/.test(VIEWS.find()));
+
+GEO = 'idle'; POS = null;
+ok('起点が無いときは「現在地を使う」と出る', VIEWS.find().includes('現在地を使う'));
+POS = { lat:35.6812, lng:139.7671, acc:20, label:'現在地' }; GEO = 'ok';
 
 /* 登録済みの地点は、現在地取得済みの状態からでもいつでも選べる */
 DB.settings.places = [{ id:'P1', label:'渋谷駅', lat:35.658, lng:139.702 }];

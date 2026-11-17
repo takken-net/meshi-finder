@@ -184,39 +184,34 @@ function setRadius(v){
 }
 
 function posCardHTML(){
-  return posBadgeHTML() + originPickerHTML();
-}
-
-/** いまの起点の状態だけを表す（切り替えは下の origin-pick から常にできる） */
-function posBadgeHTML(){
-  if(GEO === 'loading')
-    return `<div class="note">現在地を確認しています…</div>`;
-
-  if(GEO === 'ok' && POS)
-    return `<div class="note ok"><span>📍 ${esc(POS.label)}</span></div>`;
-
-  if(GEO === 'deny' || GEO === 'fail')
-    return `<div class="note warn"><span>${esc(GEOERR)}</span></div>`;
-
-  return `<div class="note"><span class="mini">現在地はまだ取得していません</span></div>`;
+  return originPickerHTML();
 }
 
 /** 起点の切替。開閉せず常に表示し、2行にまとめる：
-    1行目＝現在地ボタン＋登録済みの地点、2行目＝駅名やエリア名の検索 */
+    1行目＝現在地ボタン（いまの起点が現在地かどうかもここで表す）＋登録済みの地点、
+    2行目＝駅名やエリア名の検索。
+    かつては上に状態だけのバッジを別枠で出していたが、ボタンと表示が
+    二重になっていたため、現在地ボタン自身に状態を持たせて一本化した */
 function originPickerHTML(){
   const places = DB.settings.places || [];
   const hasLast = !!DB.settings.lastPos;
+  const usingHere = GEO === 'ok' && POS && POS.label === '現在地';
+  const hereLabel = GEO === 'loading' ? '📍 現在地を確認中…'
+                   : usingHere          ? '📍 現在地（選択中）'
+                   :                      '📍 現在地を使う';
+  const lastLabel = hasLast ? `前回の位置（${esc(DB.settings.lastPos.at)}）` : '';
   return `
     <div class="note origin-pick mt">
       <div class="row">
-        <button class="sm" onclick="locate()">📍 現在地を使う</button>
+        <button class="sm ${usingHere?'on':''}" onclick="locate()">${hereLabel}</button>
         ${(places.length || hasLast) ? `
           <select class="fld sm" onchange="usePlace(this.value)">
             <option value="">登録した地点から選ぶ…</option>
-            ${hasLast ? `<option value="__last">前回の位置（${esc(DB.settings.lastPos.at)}）</option>` : ''}
-            ${places.map(p => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('')}
+            ${hasLast ? `<option value="__last" ${POS && POS.label===lastLabel?'selected':''}>${lastLabel}</option>` : ''}
+            ${places.map(p => `<option value="${esc(p.id)}" ${POS && POS.label===p.label?'selected':''}>${esc(p.label)}</option>`).join('')}
           </select>` : ''}
       </div>
+      ${(GEO === 'deny' || GEO === 'fail') ? `<p class="mini warnmsg">${esc(GEOERR)}</p>` : ''}
       <form class="search mt" onsubmit="event.preventDefault(); doOriginSearch();">
         <span class="ico">🔍</span>
         <input id="origin-q" class="fld" type="search" enterkeyhint="search"

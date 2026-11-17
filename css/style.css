@@ -193,7 +193,8 @@ select.fld{ appearance:none; padding-right:28px;
    1行目＝現在地ボタン＋登録地点の選択欄、2行目＝駅名やエリア名の検索欄 */
 .origin-pick{ display:flex; flex-direction:column; gap:8px; }
 .origin-pick .row{ gap:8px; }
-.origin-pick .row button{ flex:0 0 auto; }
+.origin-pick .row button{ flex:0 0 auto; white-space:nowrap; }
+.origin-pick .row button.on{ background:var(--acc); border-color:var(--acc); color:#fff; font-weight:700; }
 .origin-pick .row select.fld{ flex:1; min-width:0; }
 .origin-pick form.search{ margin:0; }
 
