@@ -206,7 +206,7 @@ function originPickerHTML(){
         <button class="sm ${usingHere?'on':''}" onclick="locate()">${hereLabel}</button>
         ${(places.length || hasLast) ? `
           <select class="fld sm" onchange="usePlace(this.value)">
-            <option value="">登録した地点から選ぶ…</option>
+            <option value="">登録地点から選ぶ</option>
             ${hasLast ? `<option value="__last" ${POS && POS.label===lastLabel?'selected':''}>${lastLabel}</option>` : ''}
             ${places.map(p => `<option value="${esc(p.id)}" ${POS && POS.label===p.label?'selected':''}>${esc(p.label)}</option>`).join('')}
           </select>` : ''}
