@@ -1,24 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="112" fill="#c0392b"/>
 
-  <!-- フォーク -->
-  <g fill="#fdf6ee">
-    <rect x="158" y="68"  width="14" height="130" rx="7"/>
-    <rect x="178" y="68"  width="14" height="130" rx="7"/>
-    <rect x="198" y="68"  width="14" height="130" rx="7"/>
-    <rect x="218" y="68"  width="14" height="130" rx="7"/>
-    <path d="M150 192 L240 192 C240 218 224 234 206 234 L184 234 C166 234 150 218 150 192 Z"/>
-    <rect x="181" y="222" width="22" height="228" rx="11"/>
-  </g>
+  <g transform="translate(256 256) scale(1.15) translate(-256 -256)">
+    <!-- フォーク -->
+    <g fill="#fdf6ee">
+      <rect x="158" y="68"  width="14" height="130" rx="7"/>
+      <rect x="178" y="68"  width="14" height="130" rx="7"/>
+      <rect x="198" y="68"  width="14" height="130" rx="7"/>
+      <rect x="218" y="68"  width="14" height="130" rx="7"/>
+      <path d="M150 192 L240 192 C240 218 224 234 206 234 L184 234 C166 234 150 218 150 192 Z"/>
+      <rect x="181" y="222" width="22" height="228" rx="11"/>
+    </g>
 
-  <!-- ナイフ -->
-  <g fill="#fdf6ee">
-    <path d="M306 66
-             C 340 72 356 112 351 166
-             C 347 208 334 234 314 234
-             L 303 234
-             L 303 66
-             Z"/>
-    <rect x="296" y="222" width="22" height="228" rx="11"/>
+    <!-- ナイフ -->
+    <g fill="#fdf6ee">
+      <path d="M306 66
+               C 340 72 356 112 351 166
+               C 347 208 334 234 314 234
+               L 303 234
+               L 303 66
+               Z"/>
+      <rect x="296" y="222" width="22" height="228" rx="11"/>
+    </g>
   </g>
 </svg>
