@@ -1529,6 +1529,44 @@ eq('検索欄の値が使われる', POS.label, '新宿駅');
 eq('決定だけで結果画面へ直行する', TAB, 'result');
 eq('このときも範囲を自動で絞る', Q.radius, 1680);
 
+/* GPSの応答は数秒かかることがある。その間に駅名検索で起点を確定させた場合、
+   あとから遅れて届くGPSの結果で上書きされないことを確認する
+   （「駅名で探しても現在地が優先される」不具合の再発防止） */
+TAB = 'find';
+POS = null; GEO = 'idle';
+let geoCb = null, geoErrCb = null;
+const realGeolocation = navigator.geolocation;
+/* navigator.geolocation は読み取り専用の getter のため、直接代入すると
+   （環境によっては黙って無視されず）例外になることがある。
+   Object.defineProperty で安全に差し替える */
+Object.defineProperty(navigator, 'geolocation', {
+  value: { getCurrentPosition(ok, err){ geoCb = ok; geoErrCb = err; } },
+  configurable: true,
+});
+
+locate();
+eq('現在地の取得中になる', GEO, 'loading');
+
+plan({ body:{ places:[PJ({ displayName:{text:'渋谷駅'},
+                          location:{ latitude:35.6580, longitude:139.7016 } })] } });
+await searchOriginByName('渋谷駅');
+eq('GPS応答を待たず駅名検索の結果が起点になる', POS.label, '渋谷駅');
+
+geoCb({ coords:{ latitude:35.0, longitude:135.0, accuracy:10 } });
+eq('遅れて届いたGPSの結果では上書きされない', POS.label, '渋谷駅');
+
+/* 拒否・失敗のコールバックが遅れて届いた場合も同様 */
+TAB = 'find';
+POS = null; GEO = 'idle';
+locate();
+plan({ body:{ places:[PJ({ displayName:{text:'渋谷駅'},
+                          location:{ latitude:35.6580, longitude:139.7016 } })] } });
+await searchOriginByName('渋谷駅');
+geoErrCb({ code:1 });
+eq('遅れて届いた拒否応答でも上書きされない', POS.label, '渋谷駅');
+eq('GEOも ok のまま',                      GEO, 'ok');
+
+Object.defineProperty(navigator, 'geolocation', { value: realGeolocation, configurable: true });
 TAB = 'find';
 POS = null; GEO = 'idle'; DB.settings.places = [];
 Q = { genres:[], kw:'', openOnly:false, radius:0, rate:0 };

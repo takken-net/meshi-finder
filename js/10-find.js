@@ -32,6 +32,10 @@ function locate(){
   GEO = 'loading'; render();
   navigator.geolocation.getCurrentPosition(
     p => {
+      /* GPSの応答には数秒かかることがある。その間に駅名検索や登録地点の選択で
+         起点が既に確定していたら、あとから届いたこの結果で上書きしない
+         （「駅名で探す」を選んでも現在地が優先されてしまう不具合の原因だった） */
+      if(GEO !== 'loading') return;
       POS = { lat:p.coords.latitude, lng:p.coords.longitude,
               acc:Math.round(p.coords.accuracy||0), label:'現在地' };
       GEO = 'ok';
@@ -39,6 +43,7 @@ function locate(){
       save(); render();
     },
     e => {
+      if(GEO !== 'loading') return;   // 同様に、その間に起点が決まっていれば無視する
       GEO = (e && e.code === 1) ? 'deny' : 'fail';
       GEOERR = (e && e.code === 1)
         ? '位置情報の利用が許可されていません'
