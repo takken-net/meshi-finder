@@ -1467,15 +1467,19 @@ DB.settings.places = [];
    パネルは開閉せず、常に（2行で）表示されています。
    ============================================================ */
 DB = seed(); migrate(); DB.settings.apiKey = 'TEST-KEY'; DB.settings.dailyLimit = 100;
-POS = { lat:35.6812, lng:139.7671, acc:20, label:'現在地' }; GEO = 'ok';
+POS = { lat:35.6812, lng:139.7671, acc:20, label:'現在地' }; GEO = 'ok'; ORIGIN_SOURCE = 'geo';
 
 ok('現在地取得後は選択中であることが分かる', VIEWS.find().includes('現在地（選択中）'));
 ok('駅名検索の欄が常に出る',       VIEWS.find().includes('駅名やエリア名で探す'));
-ok('検索ボタンは出さない（決定で直接一覧へ）', !/<button[^>]*>検索<\/button>/.test(VIEWS.find()));
+/* Enterキーでの送信だけに頼ると、機種によっては送信されず現在地のまま
+   になって見える不具合が繰り返し起きたため、押せば確実な検索ボタンを
+   常設することにした（以前は「決定で直接一覧へ」の方針でボタンを
+   出していなかったが、信頼性を優先して方針転換） */
+ok('駅名検索の「検索」ボタンが出る', /<button type="submit"[^>]*>検索<\/button>/.test(VIEWS.find()));
 
-GEO = 'idle'; POS = null;
+GEO = 'idle'; POS = null; ORIGIN_SOURCE = null;
 ok('起点が無いときは「現在地を使う」と出る', VIEWS.find().includes('現在地を使う'));
-POS = { lat:35.6812, lng:139.7671, acc:20, label:'現在地' }; GEO = 'ok';
+POS = { lat:35.6812, lng:139.7671, acc:20, label:'現在地' }; GEO = 'ok'; ORIGIN_SOURCE = 'geo';
 
 /* 登録済みの地点は、現在地取得済みの状態からでもいつでも選べる */
 DB.settings.places = [{ id:'P1', label:'渋谷駅', lat:35.658, lng:139.702 }];
@@ -1498,6 +1502,15 @@ eq('使用回数が1増える',      DB.settings.usage.n, 1);
 eq('前回の位置としても記憶される', DB.settings.lastPos.lat, POS.lat);
 eq('見つかったらボタンを押さず結果画面へ直行する', TAB, 'result');
 eq('範囲が「すべて」だと徒歩20分に自動で絞る（全国表示を防ぐため）', Q.radius, 1680);
+
+/* 駅名検索の結果が起点になっている間は、探す画面に戻ってもそれが
+   はっきり分かること（入力欄に駅名が残り、赤く強調される） */
+TAB = 'find';
+const findHtml = VIEWS.find();
+ok('現在地（選択中）にはならない', !findHtml.includes('現在地（選択中）'));
+ok('入力欄に駅名が残る', /id="origin-q"[^>]*value="渋谷駅"/.test(findHtml));
+ok('検索欄が赤く強調される（form.search.on）', /class="search mt on"/.test(findHtml));
+ok('起点にしていることを文章でも伝える', findHtml.includes('「渋谷駅」を起点にしています'));
 
 /* すでに自分で範囲を選んでいた場合は、その選択を変えない */
 TAB = 'find';

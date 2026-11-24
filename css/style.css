@@ -196,7 +196,23 @@ select.fld{ appearance:none; padding-right:28px;
 .origin-pick .row button{ flex:0 0 auto; white-space:nowrap; }
 .origin-pick .row button.on{ background:var(--acc); border-color:var(--acc); color:#fff; font-weight:700; }
 .origin-pick .row select.fld{ flex:1; min-width:0; }
-.origin-pick form.search{ margin:0; }
+.origin-pick form.search{ display:flex; align-items:center; gap:8px; margin:0; }
+.origin-pick form.search .fld{ flex:1; }
+.origin-pick form.search button[type="submit"]{
+  flex:0 0 auto; min-height:40px; padding:0 14px;
+  border:1.5px solid var(--line); background:var(--card); color:var(--sub); font-weight:700;
+}
+/* 駅名・エリア名を入力している間（まだ検索前）も、検索結果が起点に
+   なったあと（form.search.on）も、赤く強調して「ここが優先される」
+   ことをひと目でわかるようにする */
+.origin-pick form.search input:not(:placeholder-shown),
+.origin-pick form.search.on input{
+  background:var(--acc-w); border-color:var(--acc); color:var(--acc); font-weight:700;
+}
+.origin-pick form.search input:not(:placeholder-shown) ~ button[type="submit"],
+.origin-pick form.search.on button[type="submit"]{
+  background:var(--acc); border-color:var(--acc); color:#fff;
+}
 
 /* ---------- 地図のピン ----------
    伝統的な「しずく形」はそのまま使いつつ、営業状態の色を全体に敷いて

@@ -7,6 +7,11 @@ let GEO    = 'idle';          // idle | loading | ok | deny | fail
 let GEOERR = '';
 let PICK   = null;            // ルーレットで選ばれた店
 let ORIGIN_BUSY = false;      // 駅名などの検索中か
+/* 起点（POS）をどの方法で決めたか。'geo'=現在地 / 'place'=登録地点・前回の位置 /
+   'search'=駅名やエリア名の検索。POS.label の文字列比較で判定すると、
+   登録地点の名前と検索した駅名がたまたま同じ場合に誤判定するため、
+   ここで明示的に区別する */
+let ORIGIN_SOURCE = null;
 
 /* 歩いて行ける範囲（時速5kmで換算。5分≒420m）。0 は絞らない */
 const RADIUS_OPTS = [
@@ -38,7 +43,7 @@ function locate(){
       if(GEO !== 'loading') return;
       POS = { lat:p.coords.latitude, lng:p.coords.longitude,
               acc:Math.round(p.coords.accuracy||0), label:'現在地' };
-      GEO = 'ok';
+      GEO = 'ok'; ORIGIN_SOURCE = 'geo';
       DB.settings.lastPos = { lat:POS.lat, lng:POS.lng, at:today() };
       save(); renderKeepingOriginInput();
     },
@@ -75,14 +80,14 @@ function renderKeepingOriginInput(){
 
 /** 登録しておいた地点を起点にする */
 function usePlace(id){
-  if(!id){ POS = null; GEO = 'idle'; render(); return; }
+  if(!id){ POS = null; GEO = 'idle'; ORIGIN_SOURCE = null; render(); return; }
   if(id === '__last'){
     const p = DB.settings.lastPos;
-    if(p){ POS = { lat:p.lat, lng:p.lng, acc:0, label:`前回の位置（${p.at}）` }; GEO = 'ok'; }
+    if(p){ POS = { lat:p.lat, lng:p.lng, acc:0, label:`前回の位置（${p.at}）` }; GEO = 'ok'; ORIGIN_SOURCE = 'place'; }
     render(); return;
   }
   const p = (DB.settings.places||[]).find(x => x.id === id);
-  if(p){ POS = { lat:p.lat, lng:p.lng, acc:0, label:p.label }; GEO = 'ok'; }
+  if(p){ POS = { lat:p.lat, lng:p.lng, acc:0, label:p.label }; GEO = 'ok'; ORIGIN_SOURCE = 'place'; }
   render();
 }
 
@@ -107,7 +112,7 @@ async function searchOriginByName(q){
     const np = places.length ? normPlace(places[0]) : null;
     if(!np || np.lat == null){ toast('見つかりませんでした'); return; }
     POS = { lat:np.lat, lng:np.lng, acc:0, label: np.name || query };
-    GEO = 'ok';
+    GEO = 'ok'; ORIGIN_SOURCE = 'search';
     DB.settings.lastPos = { lat:POS.lat, lng:POS.lng, at:today() };
     /* 範囲が「すべて」のままだと、登録済みの店が全国に散らばっている場合、
        結果の地図が全国表示になってしまう。駅名検索は「その駅の周辺」が
@@ -215,11 +220,20 @@ function posCardHTML(){
     1行目＝現在地ボタン（いまの起点が現在地かどうかもここで表す）＋登録済みの地点、
     2行目＝駅名やエリア名の検索。
     かつては上に状態だけのバッジを別枠で出していたが、ボタンと表示が
-    二重になっていたため、現在地ボタン自身に状態を持たせて一本化した */
+    二重になっていたため、現在地ボタン自身に状態を持たせて一本化した。
+
+    駅名検索は「Enterキーで送信」だけに頼っていたが、機種やソフトウェア
+    キーボードによっては送信されず、現在地のままになっているように
+    見える不具合が繰り返し起きていた。確実性を上げるため、
+    ①押せばすぐ分かる「検索」ボタンを常設し、
+    ②駅名・エリア名で検索中（または検索結果が起点になっている）あいだは
+      入力欄とボタンの背景を赤くして、今はそちらが優先されていることを
+      ひと目でわかるようにしている */
 function originPickerHTML(){
   const places = DB.settings.places || [];
   const hasLast = !!DB.settings.lastPos;
-  const usingHere = GEO === 'ok' && POS && POS.label === '現在地';
+  const usingHere = GEO === 'ok' && POS && ORIGIN_SOURCE === 'geo';
+  const usingPlaceSearch = GEO === 'ok' && POS && ORIGIN_SOURCE === 'search';
   const hereLabel = GEO === 'loading' ? '📍 現在地を確認中…'
                    : usingHere          ? '📍 現在地（選択中）'
                    :                      '📍 現在地を使う';
@@ -236,12 +250,15 @@ function originPickerHTML(){
           </select>` : ''}
       </div>
       ${(GEO === 'deny' || GEO === 'fail') ? `<p class="mini warnmsg">${esc(GEOERR)}</p>` : ''}
-      <form class="search mt" onsubmit="event.preventDefault(); doOriginSearch();">
+      <form class="search mt ${usingPlaceSearch?'on':''}" onsubmit="event.preventDefault(); doOriginSearch();">
         <span class="ico">🔍</span>
         <input id="origin-q" class="fld" type="search" enterkeyhint="search"
+               value="${usingPlaceSearch ? esc(POS.label) : ''}"
                placeholder="駅名やエリア名で探す（例: 渋谷駅）" ${ORIGIN_BUSY?'disabled':''}>
+        <button type="submit" class="sm" ${ORIGIN_BUSY?'disabled':''}>検索</button>
       </form>
       ${ORIGIN_BUSY ? '<p class="mini">検索中…</p>' : ''}
+      ${usingPlaceSearch ? `<p class="mini warnmsg">📍 「${esc(POS.label)}」を起点にしています</p>` : ''}
       ${DB.settings.apiKey ? ''
         : `<p class="mini">駅名検索にはAPIキーの設定が必要です（<a onclick="go('set')">設定</a>）。
              キーが無い場合は<a onclick="go('set')">設定</a>から緯度経度で地点を登録することもできます。</p>`}
