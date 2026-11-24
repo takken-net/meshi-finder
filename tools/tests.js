@@ -1443,6 +1443,22 @@ API_SHOW = true;
 ok('表示に切り替えられる',       VIEWS.set().includes('type="text"'));
 API_SHOW = false;
 
+/* よく使う地点の並び順（登録した順／最近登録した順を選べる） */
+DB.settings.places = [];
+ok('地点が無いときは並び替えを出さない', !VIEWS.set().includes('最近登録した順'));
+DB.settings.places = [{ id:'P1', label:'自宅', lat:35.1, lng:139.1 }];
+ok('1件だけのときも並び替えを出さない', !VIEWS.set().includes('最近登録した順'));
+DB.settings.places.push({ id:'P2', label:'職場', lat:35.2, lng:139.2 });
+ok('2件以上なら並び替えを出す', VIEWS.set().includes('最近登録した順'));
+eq('既定は登録した順（古い順が先）',
+   VIEWS.set().indexOf('自宅') < VIEWS.set().indexOf('職場'), true);
+PLACE_SORT = 'new';
+eq('最近登録した順にすると新しいものが先', sortedPlaces()[0].label, '職場');
+ok('並び替えても削除ボタンはどちらにも出る',
+   VIEWS.set().includes('自宅') && VIEWS.set().includes('職場'));
+PLACE_SORT = 'old';
+DB.settings.places = [];
+
 /* ============================================================
    24b. 起点の切替（探す画面から、現在地以外の場所を起点にする）
 

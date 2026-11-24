@@ -4,6 +4,7 @@
    ※ Places API まわり（APIキー・取得の設定）は Phase 3 でここに足します。
    ============================================================ */
 let API_SHOW = false;      // APIキーを画面に見せるか
+let PLACE_SORT = 'old';    // よく使う地点の並び順。old=登録した順 / new=最近登録した順
 
 function toggleApiShow(){ API_SHOW = !API_SHOW; render(); }
 function setApiKey(v){ DB.settings.apiKey = String(v||'').trim(); }
@@ -71,8 +72,13 @@ VIEWS.set = () => `
 
     <h3 class="mt2">よく使う地点</h3>
     <p class="mini">現在地が取れないときの検索の起点にします。自宅や職場を入れておくと便利です。</p>
+    ${(DB.settings.places||[]).length > 1 ? `
+      <select class="fld sm" onchange="PLACE_SORT=this.value; render();">
+        <option value="old" ${PLACE_SORT==='old'?'selected':''}>登録した順</option>
+        <option value="new" ${PLACE_SORT==='new'?'selected':''}>最近登録した順</option>
+      </select>` : ''}
     ${(DB.settings.places||[]).length ? `<div class="cards mt">
-      ${DB.settings.places.map(p => `
+      ${sortedPlaces().map(p => `
         <div class="card row between">
           <span>${esc(p.label)}<span class="mini"> ${fmt1(p.lat)}, ${fmt1(p.lng)}</span></span>
           <button class="ghost sm" onclick="delPlace('${esc(p.id)}')">削除</button>
@@ -123,6 +129,13 @@ VIEWS.set = () => `
       <button class="danger ghost" onclick="resetAll()">すべて消して初期化</button>
     </div>
   </div>`;
+
+/** 「よく使う地点」の並び順。常に末尾へ追加しているため、
+    配列の並びそのものが登録した順＝古い順。新しい順はそれを逆にするだけでよい */
+function sortedPlaces(){
+  const list = (DB.settings.places||[]).slice();
+  return PLACE_SORT === 'new' ? list.reverse() : list;
+}
 
 function addPlaceFromPos(){
   if(!POS){ toast('現在地がありません'); return; }
