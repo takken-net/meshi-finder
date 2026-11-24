@@ -40,7 +40,7 @@ function locate(){
               acc:Math.round(p.coords.accuracy||0), label:'現在地' };
       GEO = 'ok';
       DB.settings.lastPos = { lat:POS.lat, lng:POS.lng, at:today() };
-      save(); render();
+      save(); renderKeepingOriginInput();
     },
     e => {
       if(GEO !== 'loading') return;   // 同様に、その間に起点が決まっていれば無視する
@@ -48,10 +48,29 @@ function locate(){
       GEOERR = (e && e.code === 1)
         ? '位置情報の利用が許可されていません'
         : '現在地を取得できませんでした';
-      render();
+      renderKeepingOriginInput();
     },
     { enableHighAccuracy:true, timeout:10000, maximumAge:60000 }
   );
+}
+
+/** GPSの応答は非同期で、ユーザーが駅名欄（#origin-q）に入力している最中に
+    届くことがある。ふつうの render() は #view の中身を丸ごと作り直すため、
+    入力中の文字がその瞬間に消えてしまい、消えたことに気づかないまま
+    Enterを押すと空文字で検索され、現在地のまま取り残されたように見えていた。
+    ここだけは値をいったん保存し、再描画のあとに書き戻す */
+function renderKeepingOriginInput(){
+  const el = $('#origin-q');
+  const hadFocus = el && document.activeElement === el;
+  const v = el ? el.value : '';
+  render();
+  if(v){
+    const el2 = $('#origin-q');
+    if(el2){
+      el2.value = v;
+      if(hadFocus) el2.focus();
+    }
+  }
 }
 
 /** 登録しておいた地点を起点にする */

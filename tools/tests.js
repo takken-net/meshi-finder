@@ -1582,6 +1582,19 @@ geoErrCb({ code:1 });
 eq('遅れて届いた拒否応答でも上書きされない', POS.label, '渋谷駅');
 eq('GEOも ok のまま',                      GEO, 'ok');
 
+/* 逆向きのレースコンディション：GPSの応答が、駅名欄に入力中の文字より
+   先に届いた場合。ふつうの render() は #view を丸ごと作り直すため、
+   入力中の文字が消えてしまい、気づかずそのままにすると結局そのときの
+   起点（現在地）で検索されたように見えていた */
+TAB = 'find';
+POS = null; GEO = 'idle';
+locate();
+$('#view').innerHTML = VIEWS.find();
+$('#origin-q').value = '渋谷駅';   // ユーザーが入力している最中
+geoCb({ coords:{ latitude:35.0, longitude:135.0, accuracy:10 } });   // GPSが先に届く
+eq('GPSの結果が届いても入力中の文字は消えない', $('#origin-q').value, '渋谷駅');
+eq('現在地は起点にはなる（入力中なだけで無視はしない）', GEO, 'ok');
+
 Object.defineProperty(navigator, 'geolocation', { value: realGeolocation, configurable: true });
 TAB = 'find';
 POS = null; GEO = 'idle'; DB.settings.places = [];
