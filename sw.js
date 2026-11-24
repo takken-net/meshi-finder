@@ -22,30 +22,40 @@
      ネットワークから素通しで取り直す。設定タブの「消して読み込み直す」も
      Cache Storage は消せても、ブラウザ本体のHTTPキャッシュまでは
      消せないので、この対策とセットで初めて確実になる。
+
+     さらに GitHub Pages（Fastly CDN）は Cache-Control: max-age=600 を
+     返すため、ブラウザ本体の HTTP キャッシュに実際に10分間は残り得る。
+     「保存された表示を消して読み込み直す」がこれだけでは効かないことが
+     あったのはこのため。対策として、JS・CSS は index.html 側で
+     ?v=NN というクエリ付きで読み込んでおり（JS を変更したら数字を
+     そろえて上げる）、ここでも同じクエリを付けてキャッシュに入れる。
+     クエリが変われば「別のURL」としてブラウザ本体のキャッシュも
+     確実にバイパスできる。
    ============================================================ */
-const CACHE = 'meshi-v31';        // JSを変更したら必ずこの版を上げる（古い表示が配られ続けるため）
+const CACHE = 'meshi-v32';        // JSを変更したら必ずこの版を上げる（古い表示が配られ続けるため）
+const V = 32;                     // index.html の ?v=NN と必ずそろえる
 
 const SHELL = [
   './',
   './index.html',
-  './css/style.css',
+  `./css/style.css?v=${V}`,
   './manifest.webmanifest',
   './vendor/leaflet/leaflet.css',
   './vendor/leaflet/leaflet.js',
-  './js/01-utils.js',
-  './js/02-genres.js',
-  './js/03-storage.js',
-  './js/05-search.js',
-  './js/06-router.js',
-  './js/07-places.js',
-  './js/10-find.js',
-  './js/11-result.js',
-  './js/12-map.js',
-  './js/13-shop.js',
-  './js/14-import.js',
-  './js/15-settings.js',
-  './js/16-share.js',
-  './js/20-boot.js',
+  `./js/01-utils.js?v=${V}`,
+  `./js/02-genres.js?v=${V}`,
+  `./js/03-storage.js?v=${V}`,
+  `./js/05-search.js?v=${V}`,
+  `./js/06-router.js?v=${V}`,
+  `./js/07-places.js?v=${V}`,
+  `./js/10-find.js?v=${V}`,
+  `./js/11-result.js?v=${V}`,
+  `./js/12-map.js?v=${V}`,
+  `./js/13-shop.js?v=${V}`,
+  `./js/14-import.js?v=${V}`,
+  `./js/15-settings.js?v=${V}`,
+  `./js/16-share.js?v=${V}`,
+  `./js/20-boot.js?v=${V}`,
 ];
 
 self.addEventListener('install', e => {
@@ -74,9 +84,15 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   if(url.origin !== self.location.origin) return;   // API・地図タイルは素通し
 
-  /* 共有シートから開かれたとき（?title=... 付き）は、
-     キャッシュしてある入口をそのまま返す */
-  if(url.search && url.pathname === self.location.pathname.replace(/sw\.js$/, '')){
+  /* 共有シートから開かれたとき（manifest の share_target が付ける
+     ?title=...&text=...&url=... のいずれか）は、キャッシュしてある
+     入口をそのまま返す。
+     ここを「クエリがあれば」という緩い判定にしていると、設定タブの
+     「消して読み込み直す」が付けるキャッシュ回避用のクエリ（?nocache=…）
+     まで共有シート扱いになり、肝心の読み込み直しがキャッシュの古い
+     index.html を返して無効化されてしまうため、パラメータ名を見て絞る */
+  if((url.searchParams.has('title') || url.searchParams.has('text') || url.searchParams.has('url'))
+     && url.pathname === self.location.pathname.replace(/sw\.js$/, '')){
     e.respondWith(caches.match('./index.html').then(r => r || fetch(req)));
     return;
   }

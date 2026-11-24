@@ -119,6 +119,23 @@ Leaflet のインスタンスを残したまま `innerHTML` を書き換える�
 
 `tools/test.html` を開く。計算式や判定ロジックを触ったときは `tools/tests.js` に**検証も追加**してください。
 
+### 9. JS・CSS を変更したら `?v=NN` を3箇所そろえて上げる
+
+GitHub Pages（Fastly CDN）は `Cache-Control: max-age=600` を返すため、
+Service Worker の Cache Storage をいくら消しても、**ブラウザ本体の
+HTTP キャッシュ**に古い JS/CSS が最大10分残ることがある。設定タブの
+「保存された表示を消して読み込み直す」が効かない事故はこれが原因だった。
+
+対策として `index.html` の `<script src="js/xxx.js?v=NN">` と
+`<link ... style.css?v=NN">` にクエリを付けている。**変更したら次の3つを
+同じ数字にそろえて上げること**（1つでも忘れると、その回だけ古いまま配られる）。
+
+1. `index.html` の全 `?v=` （style.css も含む）
+2. `sw.js` の `const V = NN`（`SHELL` 配列に自動で反映される）
+3. `sw.js` の `const CACHE = 'meshi-vNN'`
+
+`tools/test.html` はローカルで直接ファイルを読むため、この対策は不要（クエリなしのまま）。
+
 ---
 
 ## APIキーのリファラ制限は「ドメインまで」で書く（実機で確認済み）

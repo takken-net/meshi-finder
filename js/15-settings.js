@@ -171,7 +171,15 @@ async function clearCaches(){
       await Promise.all(rs.map(r => r.unregister()));
     }
     toast('消しました。読み込み直します');
-    setTimeout(() => location.reload(), 600);
+    /* location.reload() だけだと、GitHub Pages（Fastly CDN）が返す
+       Cache-Control: max-age=600 により、ブラウザ本体のHTTPキャッシュが
+       10分間は同じURLを古いまま返してしまうことがある
+       （Cache Storage とは別物で、これだけ消しても直らなかった原因）。
+       クエリを変えて「別のURL」として開き直すことで、このキャッシュも
+       確実にバイパスする */
+    setTimeout(() => {
+      location.href = location.pathname + '?nocache=' + Date.now();
+    }, 600);
   }catch(e){ alert('消せませんでした: ' + e.message); }
 }
 
