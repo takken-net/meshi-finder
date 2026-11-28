@@ -1842,8 +1842,23 @@ $('#sh-addr').value = '新宿 / 個室あり / 新宿';   // 重複の「新宿�
 await saveShared();
 const tanaka = DB.shops.find(s => s.name === '鮨たなか');
 eq('キーワードがタグになる',       tanaka.tags.join(','), '新宿,個室あり');
-eq('キーワードは住所欄にも残る',   tanaka.addr, '新宿 / 個室あり / 新宿');
 ok('タグはキーワード検索にも使われる', kwMatch(tanaka, '個室あり'));
+
+/* 住所の手がかりは、画面のキーワード欄には出さず、裏で Places への
+   検索ヒントとして使うだけにする（同名店の誤認識を防ぎたいが、
+   長い住所がそのままキーワード欄やタグに出るのは分かりにくいため） */
+DB = seed(); migrate();
+SHARE = parseShared('', '炉端焼き いろは\n東京都新宿区西新宿1-1-1\nhttps://maps.app.goo.gl/def', '');
+eq('住所の手がかりは拾う（裏の検索ヒント用）', SHARE.addr, '東京都新宿区西新宿1-1-1');
+TAB = 'data'; SEL.sub = 'share';
+ok('画面のキーワード欄には住所を出さない', !VIEWS.data().includes('東京都新宿区西新宿1-1-1'));
+ok('キーワード欄は空欄から始まる', /id="sh-addr"[^>]*value=""/.test(VIEWS.data()));
+
+$('#view').innerHTML = VIEWS.data();          // キーワード欄は空のまま保存する
+await saveShared();
+const iroha = DB.shops.find(s => s.name === '炉端焼き いろは');
+eq('裏の住所の手がかりは検索ヒントとして保持される', iroha.addr, '東京都新宿区西新宿1-1-1');
+eq('画面に出していないのでタグは付かない', iroha.tags.length, 0);
 
 TAB = 'find'; SEL.sub = ''; SEL.shop = null;
 DB = seed(); migrate();

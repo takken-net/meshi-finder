@@ -81,9 +81,9 @@ function shareFormHTML(){
       <input id="sh-name" class="fld" type="text" value="${esc(SHARE.name)}"
              placeholder="店名を入れてください">
       <label class="lbl">キーワード<span class="mini">（駅名・エリア・特徴など。空白/カンマ/スラッシュ区切りでタグにもなります）</span></label>
-      <input id="sh-addr" class="fld" type="text" value="${esc(SHARE.addr)}"
+      <input id="sh-addr" class="fld" type="text" value=""
              placeholder="例: 新宿 / つけ麺 / 一人向き" oninput="updateShareTagsPreview(this.value)">
-      <div id="sh-tags-preview" class="tags mt">${shareTagsPreviewHTML(SHARE.addr)}</div>
+      <div id="sh-tags-preview" class="tags mt">${shareTagsPreviewHTML('')}</div>
       <label class="lbl">リスト<span class="mini">（任意）</span></label>
       <input id="sh-list" class="fld" type="text" value="${esc(shareDefaultList())}"
              placeholder="例: 共有から">
@@ -114,13 +114,16 @@ async function saveShared(){
   if(!SHARE) return;
   const name = (($('#sh-name')||{}).value || '').trim();
   if(!name){ alert('店名を入れてください'); return; }
-  const addr = (($('#sh-addr')||{}).value || '').trim();
+  const kw   = (($('#sh-addr')||{}).value || '').trim();
   const list = (($('#sh-list')||{}).value || '').trim();
 
   const cand = newShop({
-    /* addr にはキーワード欄の生の文字列を保持（Places への位置ヒント・検索対象として使う）。
-       tags には同じ内容を語ごとに分けて入れる（一覧やタグ検索でチップとして見えるように） */
-    name, addr, tags: splitWords(addr), srcUrl: SHARE.url, src: 'share',
+    /* addr には、Google マップの共有テキストから拾った住所の手がかり
+       （SHARE.addr）をそのまま入れる。画面のキーワード欄には出さず、
+       裏で Places への検索ヒントとして使うだけにしてある
+       （同名のチェーン店を取り違えないようにするため）。
+       tags には画面のキーワード欄に入れた語だけを分けて入れる */
+    name, addr: SHARE.addr, tags: splitWords(kw), srcUrl: SHARE.url, src: 'share',
     placeId: SHARE.placeId || '', srcId: SHARE.srcId || '',
     lat: SHARE.lat, lng: SHARE.lng,
     lists: list ? [list] : [],
