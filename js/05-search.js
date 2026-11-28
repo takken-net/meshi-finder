@@ -185,14 +185,35 @@ function cmpRow(a, b){
    ------------------------------------------------------------ */
 let RAND = Math.random;
 
-/** 候補から1軒選ぶ。直前と同じ店はなるべく避ける。0件なら null */
+/** 候補から1軒選ぶ。0件なら null。
+    起点（現在地・駅名やエリアの検索結果）からの距離が分かる店は、
+    近いほど選ばれやすいよう重み付けする（遠い店も確率0にはしない）。
+    重み = 1 / (距離km + 0.5)。0.5km分のオフセットで、すぐ近くの店の
+    重みが跳ね上がりすぎないようにしている。
+    距離が分からない店（位置未取得）は、分かっている店の中で一番遠い
+    距離と同じ扱いにする（優先はしないが、除外もしない）。
+    起点が無く誰の距離も分からないときは、これまで通り均等に扱う。
+    直前に出た店は、ほかに候補があれば先に除いてから選ぶ */
 function roulette(rows){
   if(!rows || !rows.length) return null;
-  let pick = rows[0];
-  for(let i = 0; i < 8; i++){
-    pick = rows[Math.floor(RAND() * rows.length)] || rows[0];
-    if(rows.length === 1 || pick.s.id !== DB.settings.lastRoulette) break;
+  if(rows.length === 1){ DB.settings.lastRoulette = rows[0].s.id; return rows[0]; }
+
+  const pool = rows.filter(r => r.s.id !== DB.settings.lastRoulette);
+  const candidates = pool.length ? pool : rows;
+
+  const known = candidates.map(r => r.dist).filter(d => d != null);
+  const maxDist = known.length ? Math.max(...known) : null;
+  const weightOf = r => maxDist == null ? 1 : 1 / ((r.dist != null ? r.dist : maxDist) / 1000 + 0.5);
+
+  const weights = candidates.map(weightOf);
+  const total = weights.reduce((a, b) => a + b, 0);
+  let x = RAND() * total;
+  let pick = candidates[candidates.length - 1];
+  for(let i = 0; i < candidates.length; i++){
+    x -= weights[i];
+    if(x <= 0){ pick = candidates[i]; break; }
   }
+
   DB.settings.lastRoulette = pick.s.id;   // 保存は呼び出し側で save() する
   return pick;
 }

@@ -603,7 +603,27 @@ ok('直前と同じ店は避ける', roulette(rows).s.id !== rows[0].s.id);
 DB.settings.lastRoulette = rows[0].s.id;
 RAND = () => 0;
 eq('候補が1軒ならそれを返す', roulette([rows[0]]).s.id, rows[0].s.id);
+
+/* 起点が無ければ誰の距離も分からないので、これまで通り均等に扱う */
+const rowsNoPos = searchShops({}, null, wm(1,12,0));
+DB.settings.lastRoulette = '';
+RAND = () => 0;
+eq('起点が無ければ1番目が出る（均等）', roulette(rowsNoPos).s.id, rowsNoPos[0].s.id);
+DB.settings.lastRoulette = '';
+RAND = () => 0.99;
+eq('起点が無ければ最後が出る（均等）', roulette(rowsNoPos).s.id, rowsNoPos[rowsNoPos.length-1].s.id);
 RAND = realRand;
+
+/* 起点からの距離が近いほど選ばれやすく、かつ遠い店も0にはならないこと（統計的に確認） */
+let nearCount = 0, farCount = 0;
+for(let i = 0; i < 500; i++){
+  DB.settings.lastRoulette = '';   // 毎回リセットし、「直前を避ける」除外の影響を受けないようにする
+  const r = roulette(rows);
+  if(r.s.id === near1.id) nearCount++;
+  if(r.s.id === far1.id)  farCount++;
+}
+ok('近い店の方がよく選ばれる（おまかせガチャに起点の条件が効く）', nearCount > farCount);
+ok('遠い店もゼロにはならない',                                  farCount > 0);
 
 /* ============================================================
    15. 探す・結果の画面
