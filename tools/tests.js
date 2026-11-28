@@ -1470,6 +1470,47 @@ ok('並び替えても削除ボタンはどちらにも出る',
 PLACE_SORT = 'old';
 DB.settings.places = [];
 
+/* 地点名の編集（削除して登録し直さなくても「自宅」→「東京自宅」のように直せる） */
+DB.settings.places = [{ id:'P1', label:'自宅', lat:35.1, lng:139.1 }];
+const realPrompt = window.prompt;
+window.prompt = () => '東京自宅';
+editPlaceLabel('P1');
+eq('地点名を編集できる',       DB.settings.places[0].label, '東京自宅');
+eq('座標は変わらない',         DB.settings.places[0].lat, 35.1);
+window.prompt = () => null;   // キャンセル
+editPlaceLabel('P1');
+eq('キャンセルすると変わらない', DB.settings.places[0].label, '東京自宅');
+window.prompt = () => '';     // 空で確定
+editPlaceLabel('P1');
+eq('空で確定しても変わらない', DB.settings.places[0].label, '東京自宅');
+window.prompt = realPrompt;
+DB.settings.places = [];
+
+/* 住所から地点を登録する（会社や実家など、緯度・経度を自分で調べなくても済むように） */
+DB.settings.apiKey = 'TEST-KEY'; DB.settings.dailyLimit = 100;
+DB.settings.usage = { date: today(), n: 0 };
+$('#view').innerHTML = VIEWS.set();
+$('#p-label2').value = '会社';
+$('#p-addr').value = '東京都千代田区丸の内1-1-1';
+plan({ body:{ places:[PJ({ displayName:{text:'丸の内オフィス'},
+                          location:{ latitude:35.681, longitude:139.767 } })] } });
+await addPlaceByAddress();
+eq('住所から地点が登録される',   DB.settings.places.length, 1);
+eq('名前は自分で入れたものを使う（Places側の名前ではない）', DB.settings.places[0].label, '会社');
+near('座標が入る',               DB.settings.places[0].lat, 35.681, 0.001);
+
+window.__alerts = [];
+DB.settings.apiKey = '';
+$('#view').innerHTML = VIEWS.set();
+$('#p-label2').value = '実家';
+$('#p-addr').value = '大阪府大阪市北区1-1';
+await addPlaceByAddress();
+eq('APIキーが無ければ登録しない', DB.settings.places.length, 1);
+ok('APIキーが無いことを伝える', window.__alerts.some(a => a.includes('APIキー')));
+DB.settings.apiKey = 'TEST-KEY';
+
+DB.settings.places = [];
+
 /* ============================================================
    24b. 起点の切替（探す画面から、現在地以外の場所を起点にする）
 

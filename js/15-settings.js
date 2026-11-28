@@ -5,6 +5,7 @@
    ============================================================ */
 let API_SHOW = false;      // APIキーを画面に見せるか
 let PLACE_SORT = 'old';    // よく使う地点の並び順。old=登録した順 / new=最近登録した順
+let PLACE_BUSY = false;    // 住所からの地点登録中か
 
 function toggleApiShow(){ API_SHOW = !API_SHOW; render(); }
 function setApiKey(v){ DB.settings.apiKey = String(v||'').trim(); }
@@ -81,7 +82,10 @@ VIEWS.set = () => `
       ${sortedPlaces().map(p => `
         <div class="card row between">
           <span>${esc(p.label)}<span class="mini"> ${fmt1(p.lat)}, ${fmt1(p.lng)}</span></span>
-          <button class="ghost sm" onclick="delPlace('${esc(p.id)}')">削除</button>
+          <span class="row gap">
+            <button class="ghost sm" onclick="editPlaceLabel('${esc(p.id)}')">編集</button>
+            <button class="ghost sm" onclick="delPlace('${esc(p.id)}')">削除</button>
+          </span>
         </div>`).join('')}</div>` : '<p class="mini">まだ登録がありません</p>'}
 
     <div class="mt">
@@ -94,6 +98,16 @@ VIEWS.set = () => `
       <button onclick="addPlaceManual()">追加</button>
     </div>
     <p class="mini">緯度・経度は Google マップで場所を長押しすると表示され、タップでコピーできます。</p>
+
+    <label class="lbl mt">住所から登録<span class="mini">（会社や実家など。緯度・経度を調べなくても登録できます）</span></label>
+    <div class="row gap">
+      <input id="p-label2" class="fld sm" type="text" placeholder="名前（例: 会社）" ${PLACE_BUSY?'disabled':''}>
+      <input id="p-addr"   class="fld"    type="text" placeholder="住所（例: 東京都千代田区丸の内1-1-1）" ${PLACE_BUSY?'disabled':''}>
+      <button onclick="addPlaceByAddress()" ${PLACE_BUSY?'disabled':''}>住所で追加</button>
+    </div>
+    ${PLACE_BUSY ? '<p class="mini">検索中…</p>' : ''}
+    ${DB.settings.apiKey ? '<p class="mini">住所から緯度・経度を自動で調べて登録します。</p>'
+      : '<p class="mini">住所からの登録には、上の「Google Places API」欄でAPIキーの設定が必要です。</p>'}
 
     <h3 class="mt2">ジャンル</h3>
     <p class="mini">店名やカテゴリからジャンルを付け直します。
@@ -154,6 +168,46 @@ function addPlaceManual(){
   }
   DB.settings.places.push({ id: uid('P'), label, lat: num(lat), lng: num(lng) });
   save(); render(); toast('登録しました');
+}
+/** 住所から地点を登録する（名前＋住所 → Places API で座標を調べる）。
+    緯度・経度をメモで調べなくても、会社や実家などを登録できるようにするため。
+    API を叩くのは 07-places.js の searchPlace() の呼び出しのみで、
+    ここから直接 fetch はしない（API を叩く箇所を1つに保つため） */
+async function addPlaceByAddress(){
+  const label = (($('#p-label2')||{}).value || '').trim();
+  const addr  = (($('#p-addr')||{}).value || '').trim();
+  if(!label){ alert('名前を入れてください'); return; }
+  if(!addr){ alert('住所を入れてください'); return; }
+  if(!DB.settings.apiKey){
+    alert('住所からの登録には設定タブでAPIキーを入れる必要があります。\n'
+        + 'キーが無い場合は、緯度・経度を手で入れて登録することもできます。');
+    return;
+  }
+  if(quotaLeft() <= 0){ alert('本日のAPI利用上限に達しています。日付が変わるとまた使えます。'); return; }
+
+  PLACE_BUSY = true; render();
+  try{
+    const places = await searchPlace(addr, '', null);
+    const np = places.length ? normPlace(places[0]) : null;
+    if(!np || np.lat == null){ toast('見つかりませんでした'); return; }
+    DB.settings.places.push({ id: uid('P'), label, lat: np.lat, lng: np.lng });
+    save();
+    toast('登録しました');
+  }catch(e){
+    alert(typeof apiErrorHint === 'function' ? apiErrorHint(e) : ('検索に失敗しました: ' + e.message));
+  }finally{
+    PLACE_BUSY = false; render();
+  }
+}
+/** 登録済みの地点の名前だけを変える（座標はそのまま）。
+    「自宅」を「東京自宅」のように直したいときに、削除して登録し直さずに済む */
+function editPlaceLabel(id){
+  const p = (DB.settings.places||[]).find(x => x.id === id);
+  if(!p) return;
+  const label = prompt('新しい名前は？', p.label);
+  if(!label) return;
+  p.label = label.trim();
+  save(); render(); toast('変更しました');
 }
 function delPlace(id){
   DB.settings.places = (DB.settings.places||[]).filter(p => p.id !== id);
