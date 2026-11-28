@@ -1479,7 +1479,7 @@ DB = seed(); migrate(); DB.settings.apiKey = 'TEST-KEY'; DB.settings.dailyLimit 
 POS = { lat:35.6812, lng:139.7671, acc:20, label:'現在地' }; GEO = 'ok'; ORIGIN_SOURCE = 'geo';
 
 ok('現在地取得後は選択中であることが分かる', VIEWS.find().includes('現在地（選択中）'));
-ok('駅名検索の欄が常に出る',       VIEWS.find().includes('駅名やエリア名で探す'));
+ok('駅名検索の欄が常に出る',       VIEWS.find().includes('駅名やエリアで探す'));
 /* Enterキーでの送信だけに頼ると、機種によっては送信されず現在地のまま
    になって見える不具合が繰り返し起きたため、押せば確実な検索ボタンを
    常設することにした（以前は「決定で直接一覧へ」の方針でボタンを

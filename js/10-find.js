@@ -99,7 +99,7 @@ async function searchOriginByName(q){
   const query = String(q||'').trim();
   if(!query) return;
   if(!DB.settings.apiKey){
-    alert('駅名やエリア名での検索には設定タブでAPIキーを入れる必要があります。\n'
+    alert('駅名やエリアでの検索には設定タブでAPIキーを入れる必要があります。\n'
         + 'キーが無い場合は設定タブから緯度経度で地点を登録することもできます。');
     return;
   }
@@ -254,7 +254,7 @@ function originPickerHTML(){
         <span class="ico">🔍</span>
         <input id="origin-q" class="fld" type="search" enterkeyhint="search"
                value="${usingPlaceSearch ? esc(POS.label) : ''}"
-               placeholder="駅名やエリア名で探す（例: 渋谷駅）" ${ORIGIN_BUSY?'disabled':''}>
+               placeholder="駅名やエリアで探す（例: 渋谷駅）" ${ORIGIN_BUSY?'disabled':''}>
         <button type="submit" class="sm" ${ORIGIN_BUSY?'disabled':''}>検索</button>
       </form>
       ${ORIGIN_BUSY ? '<p class="mini">検索中…</p>' : ''}
