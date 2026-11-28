@@ -121,8 +121,7 @@ function shopDetailHTML(){
       ${s.gRating ? `<div><span>Google</span>★${fmt1(s.gRating)}（${fmt(s.gCount)}件）</div>` : ''}
       ${s.addr    ? `<div><span>住所</span>${esc(s.addr)}</div>` : ''}
       ${stationLabel(s) ? `<div><span>最寄り駅</span>🚉 ${esc(stationLabel(s))}</div>` : ''}
-      <div><span>位置</span>${s.lat!=null ? `${fmt1(s.lat)}, ${fmt1(s.lng)}`
-                                          : '<span class="na">未取得</span>'}</div>
+      <div><span>営業時間</span>${openBadge(s)}</div>
       ${s.typeJa  ? `<div><span>種別</span>${esc(s.typeJa)}</div>` : ''}
       <div><span>登録</span>${esc(s.createdAt)}（${esc(srcLabel(s.src))}）</div>
     </div>
@@ -139,7 +138,7 @@ function shopDetailHTML(){
     <div class="tags mt">
       <a class="tag lnk" href="${esc(routeUrl(s))}" target="_blank" rel="noopener">🚶 経路</a>
       <a class="tag lnk" href="${esc(mapsUrl(s))}" target="_blank" rel="noopener">🗺 Googleマップ</a>
-      <a class="tag lnk" href="${esc(tabelogUrl(s))}" target="_blank" rel="noopener">🍽 食べログ</a>
+      ${s.tabelog ? `<a class="tag lnk" href="${esc(s.tabelog)}" target="_blank" rel="noopener">🍽 食べログ</a>` : ''}
       <a class="tag lnk" href="${esc(instaUrl(s))}" target="_blank" rel="noopener">📷 インスタ</a>
       <a class="tag lnk" href="${esc(tiktokUrl(s))}" target="_blank" rel="noopener">🎵 TikTok</a>
     </div>

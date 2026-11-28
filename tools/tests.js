@@ -387,16 +387,14 @@ ok('座標があれば座標で開く',         mapsUrl(withPos).includes('35.68
 ok('座標が無ければ店名で開く',       mapsUrl(noPos).includes(encodeURIComponent(noPos.name)));
 ok('routeUrl が経路案内を指す',      routeUrl(withPos).includes('/maps/dir/'));
 
-/* 食べログのリンク */
-const tb1 = newShop({ name:'麺屋こうじ', addr:'日本、〒160-0023 東京都新宿区西新宿1-1-1' });
-ok('食べログの検索を指す',        tabelogUrl(tb1).startsWith('https://tabelog.com/rst/rstsearch/'));
-ok('店名が検索語に入る',          tabelogUrl(tb1).includes(encodeURIComponent('麺屋こうじ')));
-ok('住所から区を抽出する',        tabelogUrl(tb1).includes(encodeURIComponent('新宿区')));
-ok('政令市も抽出できる',
-   tabelogUrl(newShop({ name:'X', addr:'北海道札幌市中央区1-1' })).includes(encodeURIComponent('札幌市')));
-ok('住所が無ければ店名だけで検索', !tabelogUrl(newShop({ name:'X' })).includes('&sa='));
-eq('店ページのURLが登録済みなら直行',
-   tabelogUrl(newShop({ name:'X', tabelog:'https://tabelog.com/tokyo/A1304/A130401/13000001/' })),
+/* 食べログのリンク。
+   以前は店ページのURLが無いと「食べログ内の検索結果ページ」に飛ばしていたが、
+   それは実質その店にリンクできていないため、URLが分かっている店にだけ
+   リンクを出す方針に変更した（js/13-shop.js 側で s.tabelog の有無を見る） */
+ok('食べログURLが無い店は空のまま',
+   !newShop({ name:'麺屋こうじ' }).tabelog);
+eq('食べログURLがある店はそのまま持つ',
+   newShop({ name:'X', tabelog:'https://tabelog.com/tokyo/A1304/A130401/13000001/' }).tabelog,
    'https://tabelog.com/tokyo/A1304/A130401/13000001/');
 
 /* インスタ・TikTok のリンク */
@@ -406,16 +404,27 @@ ok('ハッシュタグから空白を除く',   instaUrl(sns).includes(encodeURI
 ok('TikTok は店名検索',            tiktokUrl(sns).startsWith('https://www.tiktok.com/search?q='));
 ok('TikTok に店名が入る',          tiktokUrl(sns).includes(encodeURIComponent('麺屋 こうじ')));
 
-/* 店の詳細のリンクはタグ表示 */
+/* 店の詳細のリンクはタグ表示。
+   「位置」の数値表示はやめて「営業時間」に差し替え、食べログは
+   URLが分かっている店にだけ出す（検索ページへの誘導はしない） */
 SEL.shop = withPos.id; SEL.edit = false;
-const dhtml = VIEWS.shops();
+let dhtml = VIEWS.shops();
 ok('詳細のリンクがタグ型で出る', dhtml.includes('tag lnk'));
-ok('食べログのリンクが出る',     dhtml.includes('食べログ'));
+ok('食べログURLが無ければリンクを出さない', !dhtml.includes('食べログ'));
 ok('経路のリンクが出る',         dhtml.includes('経路'));
 ok('インスタのリンクが出る',     dhtml.includes('インスタ'));
 ok('TikTok のリンクが出る',      dhtml.includes('TikTok'));
 ok('経路が Googleマップより先',  dhtml.indexOf('🚶 経路') < dhtml.indexOf('🗺 Googleマップ'));
 ok('評価の表記は My評価',        dhtml.includes('My評価') && !dhtml.includes('自分の評価'));
+ok('位置の項目は出さない',       !dhtml.includes('<span>位置</span>'));
+ok('代わりに営業時間の項目が出る', dhtml.includes('<span>営業時間</span>'));
+
+withPos.tabelog = 'https://tabelog.com/tokyo/A1304/A130401/13000001/';
+dhtml = VIEWS.shops();
+ok('食べログURLがあればリンクが出る', dhtml.includes('🍽 食べログ'));
+ok('そのURLへ直行する', dhtml.includes(esc(withPos.tabelog)));
+delete withPos.tabelog;
+
 SEL.shop = null;
 
 /* ============================================================
