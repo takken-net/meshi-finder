@@ -254,7 +254,7 @@ function originPickerHTML(){
         <span class="ico">🔍</span>
         <input id="origin-q" class="fld" type="search" enterkeyhint="search"
                value="${usingPlaceSearch ? esc(POS.label) : ''}"
-               placeholder="駅名やエリアで探す（例: 渋谷駅）" ${ORIGIN_BUSY?'disabled':''}>
+               placeholder="駅名やエリアで探す" ${ORIGIN_BUSY?'disabled':''}>
         <button type="submit" class="sm" ${ORIGIN_BUSY?'disabled':''}>検索</button>
       </form>
       ${ORIGIN_BUSY ? '<p class="mini">検索中…</p>' : ''}
