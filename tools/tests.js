@@ -359,6 +359,8 @@ delShop(dupAdded); delShop(freshAdded);     // 以降のテストが元の3軒�
 backToList();
 eq('後片付け後は元の件数に戻る', DB.shops.length, shopCountBefore);
 
+eq('お店タブの既定の並び順は「登録が新しい順」', SHOP_Q.sort, 'new');
+
 /* HTMLエスケープ — ここが漏れると壊れた店名で画面が崩れる */
 const listHtml = shopListItemsHTML();
 ok('店名の < > がエスケープされる', !listHtml.includes('<script>危険'), '危険なタグがそのまま出ています');
